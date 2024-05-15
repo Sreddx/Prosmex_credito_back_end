@@ -1,0 +1,15 @@
+{
+    "dev": {
+        "app_function": "YourProject.run.app",
+        "aws_region": "us-east-1",
+        "profile_name": "default",
+        "project_name": "prosmex_credito_backend",
+        "runtime": "python3.11",
+        "s3_bucket": "zappa-yourproject-bucket",
+        "environment_variables": {
+            "FLASK_CONFIG": "development",
+            "SECRET_KEY": "your_secret_key_here",
+            "DATABASE_URL": "postgresql://username:password@host:port/database"
+        }
+    }
+}
