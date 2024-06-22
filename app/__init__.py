@@ -1,5 +1,6 @@
 from flask import Flask
 from .database import db, init_engine, init_session, init_db
+from .models import *
 from config import localConfig
 
 
