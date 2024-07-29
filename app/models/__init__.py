@@ -8,3 +8,4 @@ from .cliente_aval import ClienteAval
 from .tipo_prestamo import TipoPrestamo
 from .grupo import Grupo
 from .ruta import Ruta
+from .relationship_tables.roles_permisos import RolesPermisos
