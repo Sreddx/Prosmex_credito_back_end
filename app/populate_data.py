@@ -2,6 +2,11 @@ from app.models import Accion, Permiso, Rol, Grupo, Ruta, TipoPrestamo, Usuario
 from app import db
 
 def populate_data():
+    # Check if initial data exists
+    if Accion.query.first() is not None:
+        return "Initial data already exists."
+
+    
     # Define acciones
     acciones = [
         'Alta de cliente/aval', 'Creación de préstamo', 'Registro de pagos de cobranzas a nivel grupo',
@@ -66,11 +71,13 @@ def populate_data():
     db.session.commit()
 
     # Create a dummy user to serve as group leader
+    
     leader_user = Usuario(
         nombre="Leader",
         apellido_paterno="User",
         apellido_materno="One",
         email="leader.user@example.com",
+        contrasena="leader123",
         rol_id=1  # Assuming the role ID 1 exists
     )
     db.session.add(leader_user)

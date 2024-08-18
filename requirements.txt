@@ -3,3 +3,5 @@ Flask-SQLAlchemy
 psycopg2-binary
 zappa
 python-dotenv
+Flask-Bcrypt
+Flask-JWT-Extended

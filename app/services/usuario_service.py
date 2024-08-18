@@ -1,14 +1,17 @@
 from app.models import Usuario
-from app import db
+from flask_jwt_extended import get_jwt_identity
+from app import db, bcrypt
 
 class UsuarioService:
     @staticmethod
     def create_user(data):
+        password = bcrypt.generate_password_hash(data['contrasena']).decode('utf-8')
         new_user = Usuario(
             nombre=data['nombre'],
             apellido_paterno=data['apellido_paterno'],
             apellido_materno=data['apellido_materno'],
             email=data['email'],
+            contrasena=password,
             rol_id=data['rol_id']
         )
         db.session.add(new_user)
@@ -23,6 +26,24 @@ class UsuarioService:
     def get_user_by_id(user_id):
         return Usuario.query.get(user_id)
 
+    @staticmethod
+    def get_user_by_email(email):
+        return Usuario.query.filter_by(email=email).first()
+    
+    @staticmethod
+    def get_user_from_jwt():
+        # Retrieve the JWT identity
+        user_id = get_jwt_identity()
+
+        # Query your database for the user
+        user = Usuario.query.filter_by(userId=user_id).first()
+
+        # Check if a user was found
+        if not user:
+            raise Exception("User not found")
+
+        return user
+    
     @staticmethod
     def update_user(user_id, data):
         user = Usuario.query.get(user_id)

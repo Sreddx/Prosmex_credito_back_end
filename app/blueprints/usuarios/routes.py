@@ -3,11 +3,7 @@ from app.services import UsuarioService
 
 user_blueprint = Blueprint('user', __name__, url_prefix='/users')
 
-@user_blueprint.route('/', methods=['POST'])
-def create_user():
-    data = request.get_json()
-    new_user = UsuarioService.create_user(data)
-    return jsonify({'message': 'User created successfully', 'user': new_user.id}), 201
+
 
 @user_blueprint.route('/', methods=['GET'])
 def get_all_users():

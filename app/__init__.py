@@ -1,7 +1,7 @@
 from flask import Flask
 from .database import db, init_engine, init_session, init_db
 from .models import *
-
+from .extensions import bcrypt, jwt
 from config import localConfig
 
 
@@ -21,10 +21,15 @@ def create_app():
     init_db(app)
     
     # Load initial catalog data
+    
     with app.app_context():
         from .populate_data import populate_data
         populate_data()
 
+    # Initialize objects of the extensions
+    
+    bcrypt.init_app(app)
+    jwt.init_app(app)
 
     # Import and register blueprints
     from .blueprints import auth_blueprint, user_blueprint, role_blueprint, cliente_blueprint, prestamo_blueprint
