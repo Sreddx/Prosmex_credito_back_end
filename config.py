@@ -12,7 +12,7 @@ class Config:
 class localConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-
+    DEBUG = True
     # Puedes sobrescribir las claves si es necesario en el entorno local
     SECRET_KEY = os.environ.get('LOCAL_SECRET_KEY', Config.SECRET_KEY)
     JWT_SECRET_KEY = os.environ.get('LOCAL_JWT_SECRET_KEY', Config.JWT_SECRET_KEY)
