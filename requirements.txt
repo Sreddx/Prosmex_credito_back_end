@@ -5,3 +5,4 @@ zappa
 python-dotenv
 Flask-Bcrypt
 Flask-JWT-Extended
+flask-cors

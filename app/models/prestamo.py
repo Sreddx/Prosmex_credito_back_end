@@ -9,3 +9,15 @@ class Prestamo(db.Model):
     tipo_prestamo_id = db.Column(db.Integer, db.ForeignKey('tipos_prestamo.tipo_prestamo_id'))
     titular_id = db.Column(db.Integer, db.ForeignKey('clientes_avales.titular_id'))
     aval_id = db.Column(db.Integer, db.ForeignKey('clientes_avales.titular_id'))
+    
+    
+    def sertialize(self):
+        return {
+            'prestamo_id': self.prestamo_id,
+            'cliente_id': self.cliente_id,
+            'fecha_inicio': self.fecha_inicio,
+            'monto_prestamo': self.monto_prestamo,
+            'tipo_prestamo_id': self.tipo_prestamo_id,
+            'titular_id': self.titular_id,
+            'aval_id': self.aval_id
+        }

@@ -20,5 +20,6 @@ class Usuario(db.Model):
             'apellido_paterno': self.apellido_paterno,
             'apellido_materno': self.apellido_materno,
             'email': self.email,
-            'rol': self.rol.nombre
+            'rol': self.rol.nombre,
+            'rol_id': self.rol_id
         }

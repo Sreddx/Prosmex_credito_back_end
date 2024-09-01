@@ -2,6 +2,7 @@ from flask import Flask
 from .database import db, init_engine, init_session, init_db
 from .models import *
 from .extensions import bcrypt, jwt
+from flask_cors import CORS
 from config import localConfig
 
 
@@ -26,6 +27,9 @@ def create_app():
         from .populate_data import populate_data
         populate_data()
 
+    
+    CORS(app, supports_credentials=True, origins=["http://localhost:5050"], allow_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN"], expose_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN"])
+    
     # Initialize objects of the extensions
     
     bcrypt.init_app(app)

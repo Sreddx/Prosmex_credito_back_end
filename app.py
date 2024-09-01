@@ -1,9 +1,12 @@
 from app import create_app
+
 from dotenv import load_dotenv
 load_dotenv()
 
 
 app = create_app()
+
+
 
 def handle_general_exception(e):
     """ Handle exceptions raised during a request. """
