@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.services import UsuarioService
-
+from ..helpers import *
 user_blueprint = Blueprint('user', __name__, url_prefix='/users')
 
 
@@ -8,7 +8,10 @@ user_blueprint = Blueprint('user', __name__, url_prefix='/users')
 @user_blueprint.route('/', methods=['GET'])
 def get_all_users():
     users = UsuarioService.get_all_users()
-    return jsonify([{'id': user.id, 'nombre': user.nombre, 'email': user.email} for user in users])
+    if len(users) == 0:
+        return make_response({'message': 'No users found'}, 404)
+    users = [user.serialize() for user in users]
+    return make_response(users, 200)
 
 @user_blueprint.route('/<int:user_id>', methods=['GET'])
 def get_user(user_id):

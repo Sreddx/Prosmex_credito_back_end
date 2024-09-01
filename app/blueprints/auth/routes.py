@@ -11,7 +11,7 @@ def login():
         payload = request.json
         if not payload:
             return make_error_response('Payload vacío', 400)
-        fields =validate_fields(payload, ['email', 'contrasena'])
+        fields = validate_fields(payload, ['email', 'contrasena'])
         if len(fields) > 0:
             raise ValueError(f'Faltan los siguientes campos: {fields}')
         
@@ -24,23 +24,24 @@ def login():
             user = UsuarioService.get_user_by_email(email)
             if user is None:
                 raise ValueError('Usuario no encontrado')
-            app.logger.debug(f'User: {user.serialize()}')
+            current_app.logger.debug(f'User: {user.serialize()}')
             
             if user and bcrypt.check_password_hash(user.contrasena, password):
                 access_token = create_access_token(identity=user.id)
                 response = create_response({
                     "message": "Inicio de sesión exitoso!",
-                    "User": user.serialize()
+                    "User": user.serialize(),
+                    "access_token": access_token  # Include the token in the JSON response
                 }, 200)
-                set_access_cookies(response, access_token)
+                set_access_cookies(response, access_token)  # This sets the token in cookies as well, if needed
                 return response
             
             else:
-                app.logger.error('Credenciales invalidas', exc_info=True)
+                current_app.logger.error('Credenciales invalidas', exc_info=True)
                 return make_error_response('Credenciales inválidas', 401)
         
         else:
-            app.logger.error('Método no permitido', exc_info=True)
+            current_app.logger.error('Método no permitido', exc_info=True)
             return make_error_response('Método no permitido', 405)
     return handle_exceptions(func)
 
