@@ -9,7 +9,7 @@ class ClienteAvalService:
         self.cliente_id = cliente_id
         self.tipos_propiedad = ['casa_propia', 'rentada', 'prestada']
         self.estados_civiles = ['casado', 'divorciado', 'viudo', 'soltero']
-        self.parametros = ['nombre', 'apellido_paterno', 'apellido_materno', 'colonia', 'cp', 'codigo_ine', 'estado_civil', 'num_hijos', 'propiedad', 'es_aval', 'grupo_id']
+        self.parametros = ['nombre', 'apellido_paterno', 'apellido_materno', 'colonia', 'cp', 'codigo_ine', 'estado_civil', 'num_hijos', 'propiedad', 'grupo_id']
         
 
     def validate_data(self, data):
@@ -42,7 +42,7 @@ class ClienteAvalService:
                 estado_civil=data['estado_civil'],
                 num_hijos=data['num_hijos'],
                 propiedad=data['propiedad'],
-                es_aval=data['es_aval'],
+                es_aval=False,
                 grupo_id=data['grupo_id']
             )
             db.session.add(new_cliente)
