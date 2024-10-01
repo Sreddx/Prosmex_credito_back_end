@@ -9,6 +9,7 @@ class PrestamoService:
 
     def create_prestamo(self, data):
         try:
+            # 
             new_prestamo = Prestamo(
                 cliente_id=data['cliente_id'],
                 fecha_inicio=data['fecha_inicio'],

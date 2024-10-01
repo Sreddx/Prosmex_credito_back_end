@@ -11,7 +11,7 @@ class Prestamo(db.Model):
     aval_id = db.Column(db.Integer, db.ForeignKey('clientes_avales.titular_id'))
     
     
-    def sertialize(self):
+    def serialize(self):
         return {
             'prestamo_id': self.prestamo_id,
             'cliente_id': self.cliente_id,

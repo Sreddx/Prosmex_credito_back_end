@@ -25,7 +25,10 @@ def create_app():
     
     with app.app_context():
         from .populate_data import populate_data
-        populate_data()
+        try:
+            populate_data()
+        except Exception as e:
+            raise ValueError(f"Error loading initial data: {str(e)}")
 
     
     CORS(app, supports_credentials=True, origins=["http://localhost:5050"], allow_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN"], expose_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN"])

@@ -30,7 +30,7 @@ class ClienteAval(db.Model):
 
     def serialize(self):
         return {
-            'titular_id': self.titular_id,
+            'id': self.titular_id,
             'nombre': self.nombre,
             'apellido_paterno': self.apellido_paterno,
             'apellido_materno': self.apellido_materno,

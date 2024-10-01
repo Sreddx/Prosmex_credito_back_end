@@ -73,8 +73,8 @@ def populate_data():
     # Create a dummy user to serve as group leader
     
     leader_user = Usuario(
-        nombre="Leader",
-        apellido_paterno="User",
+        nombre="Titular",
+        apellido_paterno="Default",
         apellido_materno="One",
         email="leader.user@example.com",
         contrasena="leader123",
@@ -94,7 +94,7 @@ def populate_data():
         new_grupo = Grupo(
             nombre_grupo=grupo['nombre_grupo'],
             ruta_id=grupo['ruta_id'],
-            usuario_id_lider=leader_user.id  # Using the leader user's ID
+            usuario_id_titular=leader_user.id  # Using the leader user's ID
         )
         db.session.add(new_grupo)
     db.session.commit()

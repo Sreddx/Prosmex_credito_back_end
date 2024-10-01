@@ -10,6 +10,7 @@ class ClienteAvalService:
         self.tipos_propiedad = ['casa_propia', 'rentada', 'prestada']
         self.estados_civiles = ['casado', 'divorciado', 'viudo', 'soltero']
         self.parametros = ['nombre', 'apellido_paterno', 'apellido_materno', 'colonia', 'cp', 'codigo_ine', 'estado_civil', 'num_hijos', 'propiedad', 'es_aval', 'grupo_id']
+        
 
     def validate_data(self, data):
         if not validate_key(data, self.parametros):
