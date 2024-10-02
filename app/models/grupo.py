@@ -9,3 +9,4 @@ class Grupo(db.Model):
 
     # Relationship to ruta one to many
     ruta = db.relationship('Ruta', backref=db.backref('grupos', lazy=True))
+    usuarioTitular = db.relationship('Usuario', backref=db.backref('grupos', lazy=True))
