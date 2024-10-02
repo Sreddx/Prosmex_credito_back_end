@@ -4,9 +4,8 @@ from .models import *
 from .extensions import bcrypt, jwt
 from flask_cors import CORS
 from config import localConfig
-from flask_migrate import Migrate, init as init_migration, migrate as run_migration, upgrade as apply_upgrade
+from flask_migrate import Migrate, migrate as run_migration, upgrade as apply_upgrade
 import os
-import subprocess
 
 def create_app():
     app = Flask(__name__)
@@ -26,26 +25,23 @@ def create_app():
 
     # Automatically handle migrations
     with app.app_context():
-        # Check if migration folder exists, if not, initialize it
-        if not os.path.exists(os.path.join(app.root_path, 'migrations')):
+        # Run migrations and upgrade if the migration folder exists and is not empty
+        if os.path.exists(os.path.join(app.root_path, 'migrations')):
             try:
-                init_migration()
-                print("Initialized migration folder.")
+                # Run migrations to detect changes
+                run_migration(message="Automated migration")
+                print("Migration script generated.")
             except Exception as e:
-                print(f"Failed to initialize migration folder: {e}")
-
-        # Run migrations and upgrade
-        try:
-            run_migration(message="Automated migration")
-            print("Migration script generated.")
-        except Exception as e:
-            print(f"No new changes to migrate: {e}")
-        
-        try:
-            apply_upgrade()
-            print("Database upgraded successfully.")
-        except Exception as e:
-            print(f"Failed to upgrade the database: {e}")
+                print(f"No new changes to migrate: {e}")
+            
+            try:
+                # Apply any pending migrations
+                apply_upgrade()
+                print("Database upgraded successfully.")
+            except Exception as e:
+                print(f"Failed to upgrade the database: {e}")
+        else:
+            print("Migration directory does not exist. Initialize it manually if needed.")
 
     # Load initial catalog data
     with app.app_context():
