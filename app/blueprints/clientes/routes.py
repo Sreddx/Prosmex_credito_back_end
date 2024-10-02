@@ -60,6 +60,25 @@ def list_clientes():
 
     return handle_exceptions(func)
 
+# List avales para prestamo
+@cliente_blueprint.route('/avales', methods=['GET'])
+def list_avales():
+    def func():
+        cliente_service = ClienteAvalService()
+        avales = cliente_service.list_avales()
+        return create_response(avales, 200)
+
+    return handle_exceptions(func)
+# List clientes para prestamo
+@cliente_blueprint.route('/clientes-registro-prestamo', methods=['GET'])
+def list_clientes_registro():
+    def func():
+        cliente_service = ClienteAvalService()
+        clientes = cliente_service.list_clientes_registro()
+        return create_response(clientes, 200)
+
+    return handle_exceptions(func)
+
 
 # Helpers to fill cliente
 @cliente_blueprint.route('/tipos-propiedad', methods=['GET'])
@@ -77,3 +96,4 @@ def estados_civiles():
         return create_response(c.estados_civiles, 200)
 
     return handle_exceptions(func)
+

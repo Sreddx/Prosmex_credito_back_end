@@ -7,8 +7,12 @@ class Prestamo(db.Model):
     fecha_inicio = db.Column(db.DateTime)
     monto_prestamo = db.Column(db.Numeric)
     tipo_prestamo_id = db.Column(db.Integer, db.ForeignKey('tipos_prestamo.tipo_prestamo_id'))
-    titular_id = db.Column(db.Integer, db.ForeignKey('clientes_avales.titular_id'))
-    aval_id = db.Column(db.Integer, db.ForeignKey('clientes_avales.titular_id'))
+    aval_id = db.Column(db.Integer, db.ForeignKey('clientes_avales.titular_id')) #Checar si es aval
+    
+    # Relationships many-to-one
+    cliente = db.relationship('ClienteAval', foreign_keys=[cliente_id])
+    tipo_prestamo = db.relationship('TipoPrestamo', foreign_keys=[tipo_prestamo_id])
+    aval = db.relationship('ClienteAval', foreign_keys=[aval_id])
     
     
     def serialize(self):
@@ -18,6 +22,5 @@ class Prestamo(db.Model):
             'fecha_inicio': self.fecha_inicio,
             'monto_prestamo': self.monto_prestamo,
             'tipo_prestamo_id': self.tipo_prestamo_id,
-            'titular_id': self.titular_id,
             'aval_id': self.aval_id
         }

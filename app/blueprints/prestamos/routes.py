@@ -54,8 +54,18 @@ def delete_prestamo(prestamo_id):
 @prestamo_blueprint.route('/', methods=['GET'])
 def list_prestamos():
     def func():
+        print("entro")
         prestamo_service = PrestamoService()
         prestamos = prestamo_service.list_prestamos()
-        return create_response([prestamo.serialize() for prestamo in prestamos], 200)
+        return create_response(prestamos, 200)
+
+    return handle_exceptions(func)
+
+@prestamo_blueprint.route('/tipos', methods=['GET'])
+def list_tipos_prestamo():
+    def func():
+        prestamo_service = PrestamoService()
+        tipos_prestamo = prestamo_service.list_tipos_prestamo()
+        return create_response(tipos_prestamo, 200)
 
     return handle_exceptions(func)

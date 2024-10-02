@@ -9,6 +9,7 @@ class Usuario(db.Model):
     email = db.Column(db.String(255), nullable=False, unique=True)
     contrasena = db.Column(db.String(120), nullable=False)
     rol_id = db.Column(db.Integer, db.ForeignKey('roles.rol_id'))
+    usuario_id_superior= db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True) #Jefe del usuario
     
     # Relationship
     rol = db.relationship('Rol', backref=db.backref('usuarios', lazy=True))

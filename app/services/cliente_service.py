@@ -42,7 +42,7 @@ class ClienteAvalService:
                 estado_civil=data['estado_civil'],
                 num_hijos=data['num_hijos'],
                 propiedad=data['propiedad'],
-                es_aval=False,
+                es_aval=data.get('es_aval', False),
                 grupo_id=data['grupo_id']
             )
             db.session.add(new_cliente)
@@ -124,4 +124,33 @@ class ClienteAvalService:
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando clientes: {str(e)}")
             raise ValueError("No se pudo obtener la lista de clientes.")
-
+    
+    def list_clientes_registro(self):
+        try:
+            clientes = ClienteAval.query.filter_by(es_aval=False).all()
+            clientes_list = []
+            for cliente in clientes:
+                clientes_list.append({
+                    'id': cliente.titular_id,
+                    'nombre': cliente.nombre + ' ' + cliente.apellido_paterno + ' ' + cliente.apellido_materno,
+                    'grupo_id': cliente.grupo_id
+                })
+            return clientes_list
+        except SQLAlchemyError as e:
+            app.logger.error(f"Error listando clientes: {str(e)}")
+            raise ValueError("No se pudo obtener la lista de clientes.")
+    
+    def list_avales(self):
+        try:
+            clientes_avales = ClienteAval.query.filter_by(es_aval=True).all()
+            avales = []
+            for aval in clientes_avales:
+                avales.append({
+                    'id': aval.titular_id,
+                    'nombre': aval.nombre + ' ' + aval.apellido_paterno + ' ' + aval.apellido_materno,
+                    'grupo_id': aval.grupo_id
+                })
+            return avales
+        except SQLAlchemyError as e:
+            app.logger.error(f"Error listando avales: {str(e)}")
+            raise ValueError("No se pudo obtener la lista de avales.")

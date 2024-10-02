@@ -1,4 +1,4 @@
-from app.models import Prestamo
+from app.models import Prestamo, TipoPrestamo
 from app import db
 from flask import current_app as app
 from sqlalchemy.exc import SQLAlchemyError
@@ -15,7 +15,6 @@ class PrestamoService:
                 fecha_inicio=data['fecha_inicio'],
                 monto_prestamo=data['monto_prestamo'],
                 tipo_prestamo_id=data['tipo_prestamo_id'],
-                titular_id=data['titular_id'],
                 aval_id=data['aval_id']
             )
             db.session.add(new_prestamo)
@@ -49,7 +48,6 @@ class PrestamoService:
             prestamo.fecha_inicio = data.get('fecha_inicio', prestamo.fecha_inicio)
             prestamo.monto_prestamo = data.get('monto_prestamo', prestamo.monto_prestamo)
             prestamo.tipo_prestamo_id = data.get('tipo_prestamo_id', prestamo.tipo_prestamo_id)
-            prestamo.titular_id = data.get('titular_id', prestamo.titular_id)
             prestamo.aval_id = data.get('aval_id', prestamo.aval_id)
 
             db.session.commit()
@@ -75,7 +73,34 @@ class PrestamoService:
 
     def list_prestamos(self):
         try:
-            return Prestamo.query.all()
+            lista_obj_prestamos = Prestamo.query.all()
+            prestamos = []
+            for prestamo in lista_obj_prestamos:
+                prestamos.append({
+                    'prestamo_id': prestamo.prestamo_id,
+                    'cliente_id': prestamo.cliente_id,
+                    'cliente_nombre': prestamo.cliente.nombre + " " + prestamo.cliente.apellido_paterno + " " + prestamo.cliente.apellido_materno,  
+                    'fecha_inicio': prestamo.fecha_inicio,
+                    'monto_prestamo': prestamo.monto_prestamo,
+                    'tipo_prestamo_id': prestamo.tipo_prestamo_id,
+                    'tipo_prestamo_nombre': prestamo.tipo_prestamo.nombre,  
+                    'aval_id': prestamo.aval_id,
+                    'aval_nombre': prestamo.aval.nombre + " " + prestamo.aval.apellido_paterno + " " + prestamo.aval.apellido_materno 
+                })
+            return prestamos
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando préstamos: {str(e)}")
             raise ValueError("No se pudo obtener la lista de préstamos.")
+    def list_tipos_prestamo(self):
+        try:
+            tipos_prestamo = TipoPrestamo.query.all()
+            tipos = []
+            for tipo in tipos_prestamo:
+                tipos.append({
+                    'tipo_prestamo_id': tipo.tipo_prestamo_id,
+                    'nombre': tipo.nombre
+                })
+            return tipos
+        except SQLAlchemyError as e:
+            app.logger.error(f"Error listando tipos de préstamo: {str(e)}")
+            raise ValueError("No se pudo obtener la lista de tipos de préstamo.")
