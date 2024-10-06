@@ -58,7 +58,7 @@ def create_app():
     jwt.init_app(app)
 
     # Import and register blueprints
-    from .blueprints import auth_blueprint, user_blueprint, role_blueprint, cliente_blueprint, prestamo_blueprint, grupos_blueprint
+    from .blueprints import auth_blueprint, user_blueprint, role_blueprint, cliente_blueprint, prestamo_blueprint, grupos_blueprint, rutas_blueprint
 
     app.register_blueprint(auth_blueprint)
     app.register_blueprint(user_blueprint)
@@ -66,6 +66,7 @@ def create_app():
     app.register_blueprint(cliente_blueprint)
     app.register_blueprint(prestamo_blueprint)
     app.register_blueprint(grupos_blueprint)
+    app.register_blueprint(rutas_blueprint)
 
     @app.teardown_appcontext
     def shutdown_session(exception=None):

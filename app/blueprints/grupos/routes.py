@@ -1,7 +1,7 @@
 from flask import Blueprint, request
-from app.services.grupo_service import GrupoService
+from app.services import GrupoService
 from app.blueprints.helpers import create_response, make_error_response, handle_exceptions, validate_fields
-from app import db
+
 
 grupos_blueprint = Blueprint('grupos', __name__, url_prefix='/grupos')
 
