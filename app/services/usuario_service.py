@@ -31,6 +31,25 @@ class UsuarioService:
         return Usuario.query.filter_by(email=email).first()
     
     @staticmethod
+    def get_specific_users(rol_name):
+        roles = {
+            "Gestor de cobranza": 1,
+            "Titular": 2,
+            "Supervisor": 3,
+            "Gerente": 4,
+            "Director": 5,
+            "Admin": 6
+        }
+        if rol_name not in roles.keys():
+            raise ValueError("Rol no encontrado")
+        print(roles[rol_name])
+        usuarios_con_rol = Usuario.query.filter_by(rol_id=roles[rol_name]).all()
+        if not usuarios_con_rol:
+            raise ValueError("No se encontraron usuarios con el rol proporcionado")
+        return usuarios_con_rol
+
+            
+    @staticmethod
     def get_user_from_jwt():
         # Retrieve the JWT identity
         user_id = get_jwt_identity()

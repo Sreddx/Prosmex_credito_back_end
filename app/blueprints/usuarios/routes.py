@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.services import UsuarioService
+from app.blueprints.helpers import create_response, handle_exceptions
 from ..helpers import *
 user_blueprint = Blueprint('user', __name__, url_prefix='/users')
 
@@ -33,3 +34,14 @@ def delete_user(user_id):
     if UsuarioService.delete_user(user_id):
         return jsonify({'message': 'User deleted successfully'})
     return jsonify({'message': 'User not found'}), 404
+
+@user_blueprint.route('/tipo-especifico', methods=['GET'])
+def get_specific_users():
+    def func():
+        rol_name = request.args.get('rol')
+        if not rol_name:
+            return make_error_response('Rol no proporcionado', 400)
+        users = UsuarioService.get_specific_users(rol_name)
+        users = [user.serialize() for user in users]
+        return create_response(users, 200)
+    return handle_exceptions(func)
