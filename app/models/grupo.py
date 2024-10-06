@@ -10,3 +10,11 @@ class Grupo(db.Model):
     # Relationship to ruta one to many
     ruta = db.relationship('Ruta', backref=db.backref('grupos', lazy=True))
     usuarioTitular = db.relationship('Usuario', backref=db.backref('grupos', lazy=True))
+    
+    def serialize(self):
+        return {
+            'grupo_id': self.grupo_id,
+            'nombre_grupo': self.nombre_grupo,
+            'ruta_id': self.ruta_id,
+            'usuario_id_titular': self.usuario_id_titular
+        }

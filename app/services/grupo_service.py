@@ -1,4 +1,4 @@
-from app.models import Grupo
+from app.models import Grupo, Ruta, Usuario
 from app import db
 from flask import current_app as app
 from sqlalchemy.exc import SQLAlchemyError
@@ -9,9 +9,18 @@ class GrupoService:
 
     def create_grupo(self, data):
         try:
+            # Check if ruta and usuario exist before creating the grupo
+            ruta_to_insert = Ruta.query.get(data['ruta_id'])
+            if not ruta_to_insert:
+                raise ValueError(f"No se encontró la ruta con ID: {data['ruta_id']}")
+            usuario_to_insert = Usuario.query.get(data['usuario_id_titular'])
+            if not usuario_to_insert:
+                raise ValueError(f"No se encontró el usuario con ID: {data['usuario_id_titular']}")
+            
             new_grupo = Grupo(
-                nombre=data['nombre'],
-                descripcion=data['descripcion']
+                nombre_grupo=data['nombre_grupo'],
+                ruta_id=data['ruta_id'],
+                usuario_id_titular=data['usuario_id_titular']
             )
             db.session.add(new_grupo)
             db.session.commit()
@@ -40,8 +49,9 @@ class GrupoService:
             return None
 
         try:
-            grupo.nombre = data.get('nombre', grupo.nombre)
-            grupo.descripcion = data.get('descripcion', grupo.descripcion)
+            print(data)
+            grupo.nombre_grupo = data.get('nombre_grupo', grupo.nombre_grupo)
+            
 
             db.session.commit()
             return grupo
@@ -67,15 +77,8 @@ class GrupoService:
     def list_grupos(self):
         try:
             lista_obj_grupos = Grupo.query.all()
-            grupos = []
-            for grupo in lista_obj_grupos:
-                grupos.append({
-                    'grupo_id': grupo.grupo_id,
-                    'nombre': grupo.nombre,
-                    'titualr': grupo.usuarioTitular,
-                    'ruta': grupo.ruta.nombre_ruta
-                })
-            return grupos
+            
+            return lista_obj_grupos
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando grupos: {str(e)}")
             raise ValueError("No se pudo obtener la lista de grupos.")
