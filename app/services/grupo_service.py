@@ -22,6 +22,7 @@ class GrupoService:
                 ruta_id=data['ruta_id'],
                 usuario_id_titular=data['usuario_id_titular']
             )
+            new_grupo.validar_titular()
             db.session.add(new_grupo)
             db.session.commit()
             return new_grupo
@@ -49,10 +50,11 @@ class GrupoService:
             return None
 
         try:
-            print(data)
-            grupo.nombre_grupo = data.get('nombre_grupo', grupo.nombre_grupo)
             
-
+            grupo.nombre_grupo = data.get('nombre_grupo', grupo.nombre_grupo)
+            grupo.usuario_id_titular = data.get('usuario_id_titular', grupo.usuario_id_titular)
+            grupo.ruta_id = data.get('ruta_id', grupo.ruta_id)
+            grupo.validar_titular()
             db.session.commit()
             return grupo
         except SQLAlchemyError as e:

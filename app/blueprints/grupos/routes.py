@@ -45,6 +45,7 @@ def get_grupo(grupo_id):
 @grupos_blueprint.route('/<int:grupo_id>', methods=['PUT'])
 def update_grupo(grupo_id):
     data = request.get_json()
+
     def func():
         service = GrupoService(grupo_id)
         updated_grupo = service.update_grupo(data)
