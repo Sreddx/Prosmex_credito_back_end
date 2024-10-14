@@ -5,3 +5,4 @@ from .roles.routes import role_blueprint
 from .usuarios.routes import user_blueprint
 from .grupos.routes import grupos_blueprint
 from .rutas.routes import rutas_blueprint
+from .pagos.routes import pagos_blueprint
