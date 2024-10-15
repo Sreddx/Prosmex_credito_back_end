@@ -73,14 +73,24 @@ def populate_data():
     # Create a dummy user to serve as group leader
     
     leader_user = Usuario(
-        nombre="Titular",
+        nombre="Gestor Cobranza",
         apellido_paterno="Default",
         apellido_materno="One",
-        email="leader.user@example.com",
-        contrasena="leader123",
+        email="Cobranza.user@example.com",
+        contrasena="cobranza123",
         rol_id=1  # Assuming the role ID 1 exists
     )
     db.session.add(leader_user)
+    db.session.commit()
+    titular_user = Usuario(
+        nombre="Titular",
+        apellido_paterno="Default",
+        apellido_materno="One",
+        email="titular.user@example.com",
+        contrasena="titular123",
+        rol_id=2  # Assuming the role ID 1 exists
+    )
+    db.session.add(titular_user)
     db.session.commit()
 
     # Create dummy data for Grupos
@@ -94,7 +104,7 @@ def populate_data():
         new_grupo = Grupo(
             nombre_grupo=grupo['nombre_grupo'],
             ruta_id=grupo['ruta_id'],
-            usuario_id_titular=leader_user.id  # Using the leader user's ID
+            usuario_id_titular=titular_user.id  # Using the titular_user user's ID
         )
         db.session.add(new_grupo)
     db.session.commit()

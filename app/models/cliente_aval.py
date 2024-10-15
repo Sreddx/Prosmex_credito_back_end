@@ -27,7 +27,8 @@ class ClienteAval(db.Model):
         if num_hijos < 0:
             raise ValueError("El número de hijos no puede ser negativo.")
         return num_hijos
-
+    def getNombreCompleto(self):
+        return f'{self.nombre} {self.apellido_paterno} {self.apellido_materno}'
     def serialize(self):
         return {
             'id': self.titular_id,

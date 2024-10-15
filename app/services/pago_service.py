@@ -1,4 +1,4 @@
-from app.models import Pago, Prestamo, Grupo
+from app.models import Pago, Prestamo, Grupo, ClienteAval
 from app import db
 from flask import current_app as app
 from sqlalchemy.exc import SQLAlchemyError
@@ -90,7 +90,7 @@ class PagoService:
     def get_grupos():
         try:
             grupos = Grupo.query.all()
-            grupos_list = [{'id': grupo.grupo_id, 'nombre': grupo.nombre} for grupo in grupos]
+            grupos_list = [{'id': grupo.grupo_id, 'nombre': grupo.nombre_grupo} for grupo in grupos]
             return grupos_list
         except SQLAlchemyError as e:
             app.logger.error(f"Error obteniendo grupos: {str(e)}")
@@ -99,9 +99,19 @@ class PagoService:
     @staticmethod
     def get_prestamos_by_grupo(grupo_id):
         try:
-            # Assuming Prestamo model has a 'grupo_id' foreign key
-            prestamos = Prestamo.query.filter_by(grupo_id=grupo_id).all()
-            prestamos_list = [{'id': prestamo.prestamo_id, 'monto': float(prestamo.monto_prestado)} for prestamo in prestamos]
+            clientes_en_grupo = ClienteAval.query.filter_by(grupo_id=grupo_id).all()
+            id_clientes = [cliente.titular_id for cliente in clientes_en_grupo]
+            
+            prestamos_cliente = Prestamo.query.filter(Prestamo.cliente_id.in_(id_clientes)).all()
+            prestamos_list = []
+            for prestamo in prestamos_cliente:
+                cliente = prestamo.cliente  # Assuming there is a relationship defined in the Prestamo model
+                prestamos_list.append({
+                    'id': prestamo.prestamo_id,
+                    'monto': float(prestamo.monto_prestamo),
+                    'cliente_nombrecompleto': cliente.getNombreCompleto()  # Assuming 'nombrecompleto' is a field in Cliente model
+                })
+            print(prestamos_list)
             return prestamos_list
         except SQLAlchemyError as e:
             app.logger.error(f"Error obteniendo préstamos: {str(e)}")
