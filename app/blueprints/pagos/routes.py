@@ -15,7 +15,7 @@ def list_pagos():
 @pagos_blueprint.route('/', methods=['POST'])
 def create_pago():
     data = request.get_json()
-    required_fields = ['fecha_pago', 'monto_pagado', 'prestamo_id']
+    required_fields = ['monto_pagado', 'prestamo_id'] 
     missing_fields = validate_fields(data, required_fields)
     if missing_fields:
         return make_error_response(f'Faltan campos requeridos: {", ".join(missing_fields)}', 400)
@@ -26,6 +26,7 @@ def create_pago():
         pago_data = new_pago.serialize()
         return create_response({'pago': pago_data}, 201)
     return handle_exceptions(func)
+
 
 @pagos_blueprint.route('/<int:pago_id>', methods=['GET'])
 def get_pago(pago_id):

@@ -7,3 +7,4 @@ Flask-Bcrypt
 Flask-JWT-Extended
 flask-cors
 Flask-Migrate
+pytz

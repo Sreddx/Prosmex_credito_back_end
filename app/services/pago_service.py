@@ -1,3 +1,5 @@
+import datetime
+import pytz
 from app.models import Pago, Prestamo, Grupo, ClienteAval
 from app import db
 from flask import current_app as app
@@ -9,8 +11,8 @@ class PagoService:
 
     def create_pago(self, data):
         try:
-            # Validate required fields
-            required_fields = ['fecha_pago', 'monto_pagado', 'prestamo_id']
+            # Validate required fields except 'fecha_pago'
+            required_fields = ['monto_pagado', 'prestamo_id']
             missing_fields = [field for field in required_fields if field not in data]
             if missing_fields:
                 raise ValueError(f"Faltan campos requeridos: {', '.join(missing_fields)}")
@@ -20,9 +22,8 @@ class PagoService:
             if not prestamo:
                 raise ValueError("El préstamo especificado no existe.")
 
-            # Create the Pago instance
+            # Create the Pago instance with the current datetime (fecha_pago is automatic)
             new_pago = Pago(
-                fecha_pago=data['fecha_pago'],
                 monto_pagado=data['monto_pagado'],
                 prestamo_id=data['prestamo_id']
             )
@@ -33,6 +34,7 @@ class PagoService:
             db.session.rollback()
             app.logger.error(f"Error creando pago: {str(e)}")
             raise
+
 
     def get_pago(self):
         if not self.pago_id:
@@ -53,15 +55,17 @@ class PagoService:
             return None
 
         try:
-            pago.fecha_pago = data.get('fecha_pago', pago.fecha_pago)
+            # Only update monto_pagado and prestamo_id, fecha_pago remains the same or updated with current time
             pago.monto_pagado = data.get('monto_pagado', pago.monto_pagado)
             pago.prestamo_id = data.get('prestamo_id', pago.prestamo_id)
+            pago.fecha_pago = datetime.now(pytz.timezone('America/Mexico_City'))  # Update to current date/time
             db.session.commit()
             return pago
         except SQLAlchemyError as e:
             db.session.rollback()
             app.logger.error(f"Error actualizando pago: {str(e)}")
             raise ValueError("No se pudo actualizar el pago.")
+
 
     def delete_pago(self):
         pago = self.get_pago()
