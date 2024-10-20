@@ -10,7 +10,7 @@ class UsuarioService:
             nombre=data['nombre'],
             apellido_paterno=data['apellido_paterno'],
             apellido_materno=data['apellido_materno'],
-            email=data['email'],
+            usuario=data['usuario'],
             contrasena=password,
             rol_id=data['rol_id']
         )
@@ -30,8 +30,8 @@ class UsuarioService:
         user = Usuario.query.get(user_id)
         return user.rol_id
     @staticmethod
-    def get_user_by_email(email):
-        return Usuario.query.filter_by(email=email).first()
+    def get_user_by_usuario(usuario):
+        return Usuario.query.filter_by(usuario=usuario).first()
     
     @staticmethod
     def get_specific_users(rol_name):
@@ -73,7 +73,7 @@ class UsuarioService:
             user.nombre = data.get('nombre', user.nombre)
             user.apellido_paterno = data.get('apellido_paterno', user.apellido_paterno)
             user.apellido_materno = data.get('apellido_materno', user.apellido_materno)
-            user.email = data.get('email', user.email)
+            user.usuario = data.get('usuario', user.usuario)
             user.rol_id = data.get('rol_id', user.rol_id)
             db.session.commit()
             return user

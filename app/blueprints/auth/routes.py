@@ -11,17 +11,17 @@ def login():
         payload = request.json
         if not payload:
             return make_error_response('Payload vacío', 400)
-        fields = validate_fields(payload, ['email', 'contrasena'])
+        fields = validate_fields(payload, ['usuario', 'contrasena'])
         if len(fields) > 0:
             raise ValueError(f'Faltan los siguientes campos: {fields}')
         
         if request.method == 'POST':
-            email = payload.get('email')
+            usuario = payload.get('usuario')
             password = payload.get('contrasena')
             # Init user service
             print(payload)
             
-            user = UsuarioService.get_user_by_email(email)
+            user = UsuarioService.get_user_by_usuario(usuario)
             if user is None:
                 raise ValueError('Usuario no encontrado')
             current_app.logger.debug(f'User: {user.serialize()}')
@@ -51,7 +51,7 @@ def register():
         payload = request.json
         if not payload:
             return make_error_response('Payload vacío', 400)
-        fields = validate_fields(payload, ['nombre', 'apellido_paterno', 'apellido_materno', 'email', 'contrasena', 'rol_id'])
+        fields = validate_fields(payload, ['nombre', 'apellido_paterno', 'apellido_materno', 'usuario', 'contrasena', 'rol_id'])
         if len(fields) > 0:
             return make_error_response(f'Faltan los siguientes campos: {fields}', 400)
         

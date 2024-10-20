@@ -76,7 +76,7 @@ def populate_data():
         nombre="Gestor Cobranza",
         apellido_paterno="Default",
         apellido_materno="One",
-        email="Cobranza.user@example.com",
+        usuario="Cobranza.user@example.com",
         contrasena="cobranza123",
         rol_id=1  # Assuming the role ID 1 exists
     )
@@ -86,7 +86,7 @@ def populate_data():
         nombre="Titular",
         apellido_paterno="Default",
         apellido_materno="One",
-        email="titular.user@example.com",
+        usuario="titular.user@example.com",
         contrasena="titular123",
         rol_id=2  # Assuming the role ID 1 exists
     )

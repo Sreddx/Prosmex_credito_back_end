@@ -18,7 +18,7 @@ def get_all_users():
 def get_user(user_id):
     user = UsuarioService.get_user_by_id(user_id)
     if user:
-        return jsonify({'id': user.id, 'nombre': user.nombre, 'email': user.email})
+        return jsonify({'id': user.id, 'nombre': user.nombre, 'usuario': user.usuario})
     return jsonify({'message': 'User not found'}), 404
 
 @user_blueprint.route('/<int:user_id>', methods=['PUT'])
