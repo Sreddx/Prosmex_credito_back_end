@@ -1,7 +1,7 @@
-from ..database import db
 from sqlalchemy.orm import validates
 from sqlalchemy import CheckConstraint, UniqueConstraint
-
+from .cliente_aval import ClienteAval
+from ..database import db
 class Prestamo(db.Model):
     __tablename__ = 'prestamos'
     
@@ -30,12 +30,27 @@ class Prestamo(db.Model):
             raise ValueError("El monto del préstamo debe ser mayor que 0.")
         return value
 
-    # Validation to prevent repeated aval_id between loans
+    # Validation to ensure the aval has not been used in another loan within the same group
     @validates('aval_id')
     def validate_aval_id(self, key, aval_id):
-        existing_prestamo = Prestamo.query.filter_by(aval_id=aval_id).first()
+        # Get the group of the cliente
+        cliente = ClienteAval.query.get(self.cliente_id)
+        if not cliente:
+            raise ValueError(f"Cliente con ID {self.cliente_id} no encontrado.")
+
+        # Check if the aval already has a loan in the same group
+        existing_prestamo = (
+            Prestamo.query
+            .join(ClienteAval, Prestamo.aval_id == ClienteAval.titular_id)
+            .filter(ClienteAval.grupo_id == cliente.grupo_id)
+            .filter(Prestamo.aval_id == aval_id)
+            .filter(Prestamo.prestamo_id != self.prestamo_id)  # Exclude the current loan (if updating)
+            .first()
+        )
+        
         if existing_prestamo:
-            raise ValueError(f"El aval con ID {aval_id} ya está asociado a otro préstamo.")
+            raise ValueError(f"El aval con ID {aval_id} ya está asignado a otro préstamo en el grupo del cliente.")
+        
         return aval_id
 
     def serialize(self):
