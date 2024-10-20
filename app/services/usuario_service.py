@@ -25,7 +25,10 @@ class UsuarioService:
     @staticmethod
     def get_user_by_id(user_id):
         return Usuario.query.get(user_id)
-
+    @staticmethod
+    def get_user_rol_by_user_id(user_id):
+        user = Usuario.query.get(user_id)
+        return user.rol_id
     @staticmethod
     def get_user_by_email(email):
         return Usuario.query.filter_by(email=email).first()
@@ -52,10 +55,10 @@ class UsuarioService:
     @staticmethod
     def get_user_from_jwt():
         # Retrieve the JWT identity
-        user_id = get_jwt_identity()
-
+        id_from_jwt = get_jwt_identity()
+        
         # Query your database for the user
-        user = Usuario.query.filter_by(userId=user_id).first()
+        user = Usuario.query.filter_by(id=id_from_jwt).first()
 
         # Check if a user was found
         if not user:

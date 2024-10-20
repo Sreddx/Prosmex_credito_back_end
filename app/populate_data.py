@@ -58,9 +58,9 @@ def populate_data():
 
     # Create dummy data for Rutas
     rutas = [
-        {'nombre_ruta': 'Ruta 1'},
-        {'nombre_ruta': 'Ruta 2'},
-        {'nombre_ruta': 'Ruta 3'}
+        {'nombre_ruta': 'Ruta 1: zapopan'},
+        {'nombre_ruta': 'Ruta 2: Guadalajara'},
+        {'nombre_ruta': 'Ruta 3: Tlaquepaque'}
     ]
 
     ruta_objects = []
@@ -95,9 +95,9 @@ def populate_data():
 
     # Create dummy data for Grupos
     grupos = [
-        {'nombre_grupo': 'Grupo 1', 'ruta_id': ruta_objects[0].ruta_id},
-        {'nombre_grupo': 'Grupo 2', 'ruta_id': ruta_objects[1].ruta_id},
-        {'nombre_grupo': 'Grupo 3', 'ruta_id': ruta_objects[2].ruta_id}
+        {'nombre_grupo': 'Grupo 1 - Nuevo Mexico', 'ruta_id': ruta_objects[0].ruta_id},
+        {'nombre_grupo': 'Grupo 2 - Chapultepec', 'ruta_id': ruta_objects[1].ruta_id},
+        {'nombre_grupo': 'Grupo 3 - Las Huertas', 'ruta_id': ruta_objects[2].ruta_id}
     ]
 
     for grupo in grupos:
@@ -109,36 +109,59 @@ def populate_data():
         db.session.add(new_grupo)
     db.session.commit()
 
-    # Create dummy data for TiposPrestamo
+    # Create default data for TiposPrestamo
     tipos_prestamo = [
-        {
-            'nombre': 'Préstamo Personal',
-            'numero_semanas': 24,
-            'porcentaje_semanal': 1.5,
-            'incumplimientos_tolerados': 2,
-            'pena_incumplimiento': 100.0,
-            'limite_penalizaciones': 5
-        },
-        {
-            'nombre': 'Préstamo Hipotecario',
-            'numero_semanas': 360,
-            'porcentaje_semanal': 0.5,
-            'incumplimientos_tolerados': 3,
-            'pena_incumplimiento': 500.0,
-            'limite_penalizaciones': 10
-        },
-        {
-            'nombre': 'Préstamo Automotriz',
-            'numero_semanas': 60,
-            'porcentaje_semanal': 1.0,
-            'incumplimientos_tolerados': 1,
-            'pena_incumplimiento': 200.0,
-            'limite_penalizaciones': 7
-        }
-    ]
+    {
+        'tipo_prestamo_id': 1,
+        'nombre': 'Préstamo Tipo 14 semanas',
+        'numero_semanas': 14,
+        'porcentaje_semanal': 0.1,
+        'incumplimientos_tolerados': 1,
+        'pena_incumplimiento': 1.0,
+        'limite_penalizaciones': 1
+    },
+    {
+        'tipo_prestamo_id': 34,
+        'nombre': 'Préstamo Tipo 20 semanas',
+        'numero_semanas': 20,
+        'porcentaje_semanal': 0.07,
+        'incumplimientos_tolerados': 1,
+        'pena_incumplimiento': 1.0,
+        'limite_penalizaciones': 4
+    },
+    {
+        'tipo_prestamo_id': 35,
+        'nombre': 'Préstamo Tipo 30 semanas',
+        'numero_semanas': 30,
+        'porcentaje_semanal': 0.05,
+        'incumplimientos_tolerados': 1,
+        'pena_incumplimiento': 2.0,
+        'limite_penalizaciones': 4
+    },
+    {
+        'tipo_prestamo_id': 36,
+        'nombre': 'Préstamo Tipo 11 semanas',
+        'numero_semanas': 11,
+        'porcentaje_semanal': 0.1,
+        'incumplimientos_tolerados': 1,
+        'pena_incumplimiento': 1.0,
+        'limite_penalizaciones': 4
+    },
+    {
+        'tipo_prestamo_id': 37,
+        'nombre': 'Préstamo Tipo 13 semanas',
+        'numero_semanas': 13,
+        'porcentaje_semanal': 0.1,
+        'incumplimientos_tolerados': 1,
+        'pena_incumplimiento': 1.0,
+        'limite_penalizaciones': 4
+    }
+]
+
 
     for tipo in tipos_prestamo:
         new_tipo = TipoPrestamo(
+            tipo_prestamo_id=tipo['tipo_prestamo_id'],
             nombre=tipo['nombre'],
             numero_semanas=tipo['numero_semanas'],
             porcentaje_semanal=tipo['porcentaje_semanal'],

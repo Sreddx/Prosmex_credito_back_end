@@ -1,4 +1,5 @@
 from app.models import Prestamo, TipoPrestamo
+from app.services import usuario_service
 from app import db
 from flask import current_app as app
 from sqlalchemy.exc import SQLAlchemyError
@@ -6,24 +7,39 @@ from sqlalchemy.exc import SQLAlchemyError
 class PrestamoService:
     def __init__(self, prestamo_id=None):
         self.prestamo_id = prestamo_id
-
-    def create_prestamo(self, data):
-        try:
-            # 
-            new_prestamo = Prestamo(
-                cliente_id=data['cliente_id'],
-                fecha_inicio=data['fecha_inicio'],
-                monto_prestamo=data['monto_prestamo'],
-                tipo_prestamo_id=data['tipo_prestamo_id'],
-                aval_id=data['aval_id']
-            )
-            db.session.add(new_prestamo)
-            db.session.commit()
-            return new_prestamo
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            app.logger.error(f"Error creando préstamo: {str(e)}")
-            raise ValueError("No se pudo crear el préstamo.")
+   
+    @staticmethod
+    def __check_override_monto_prestamo(monto_prestamo, user):
+        user_role = usuario_service.UsuarioService.get_user_rol_by_user_id(user.id)
+        if monto_prestamo<=5000:
+            return True
+        elif monto_prestamo>=5000 and user_role == 6:
+            return True
+        else:
+            return False
+            
+    def create_prestamo(self, data, user):
+        monto_prestamo = data['monto_prestamo']
+        if self.__check_override_monto_prestamo(monto_prestamo, user):
+            try:
+                
+                new_prestamo = Prestamo(
+                    cliente_id=data['cliente_id'],
+                    fecha_inicio=data['fecha_inicio'],
+                    monto_prestamo=data['monto_prestamo'],
+                    tipo_prestamo_id=data['tipo_prestamo_id'],
+                    aval_id=data['aval_id']
+                )
+                db.session.add(new_prestamo)
+                db.session.commit()
+                return new_prestamo
+            except SQLAlchemyError as e:
+                db.session.rollback()
+                app.logger.error(f"Error creando préstamo: {str(e)}")
+                raise ValueError("No se pudo crear el préstamo.")
+        else:
+            raise ValueError("No tienes permisos para realizar agregar un prestamo mayor a 5000.")
+                
 
     def get_prestamo(self):
         if not self.prestamo_id:

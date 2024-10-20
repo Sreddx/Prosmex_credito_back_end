@@ -1,15 +1,23 @@
 from flask import Blueprint, request
+from flask_jwt_extended import jwt_required
 from app.services import PrestamoService
+from app.services import UsuarioService
 from app.blueprints.helpers import create_response, make_error_response, handle_exceptions
 
 prestamo_blueprint = Blueprint('prestamo', __name__, url_prefix='/prestamos')
 
 @prestamo_blueprint.route('/', methods=['POST'])
+@jwt_required()
 def create_prestamo():
     def func():
         data = request.get_json()
         prestamo_service = PrestamoService()
-        new_prestamo = prestamo_service.create_prestamo(data)
+        user = UsuarioService.get_user_from_jwt()
+        if not user:
+            raise ValueError("Usuario no encontrado")
+        if not data:
+            raise ValueError("No se proporcionaron datos para prestamo")
+        new_prestamo = prestamo_service.create_prestamo(data, user)
         return create_response({'message': 'Prestamo created successfully', 'prestamo': new_prestamo.prestamo_id}, 201)
 
     return handle_exceptions(func)
