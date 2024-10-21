@@ -9,26 +9,54 @@ from app.models import (
     ClienteAval,
     Prestamo,
     TipoPrestamo,
-    Pago
+    Pago,
+    Rol  # Asegúrate de importar el modelo Rol si lo necesitas
 )
 from app import db
+from flask_jwt_extended import get_jwt_identity
+from app.services.usuario_service import UsuarioService
 
 class ReporteService:
     @staticmethod
     def obtener_reporte():
-        # Aliases for users to distinguish between gerente, supervisor, and titular
+        # Obtener el usuario actual
+        user = UsuarioService.get_user_from_jwt()
+        user_role_id = user.rol_id  # Obtener el ID del rol
+
+        # Si el usuario es 'Gestor de cobranza' (rol_id = 1), devuelve una lista vacía
+        if user_role_id == 1:
+            return []
+
+        # Inicializar filtros
+        filters = []
+
+        # Aplicar filtros basados en el rol
+        if user_role_id in [5, 6]:  # Director (5) y Admin (6)
+            # No se aplican filtros adicionales
+            pass
+        elif user_role_id == 4:  # Gerente
+            # Filtrar por rutas asignadas al gerente
+            filters.append(Ruta.usuario_id_gerente == user.id)
+        elif user_role_id == 3:  # Supervisor
+            # Filtrar por rutas asignadas al supervisor
+            filters.append(Ruta.usuario_id_supervisor == user.id)
+        elif user_role_id == 2:  # Titular
+            # Filtrar por grupos asignados al titular
+            filters.append(Grupo.usuario_id_titular == user.id)
+
+        # Aliases para distinguir entre gerente, supervisor y titular
         usuarios_gerente = aliased(Usuario)
         usuarios_supervisor = aliased(Usuario)
         usuarios_titular = aliased(Usuario)
 
-        # Start of the current week (Monday)
+        # Inicio de la semana actual (lunes)
         current_date = func.current_date()
         start_of_week = func.date_trunc('week', current_date)
 
-        # Calculate the adjusted date by adding weeks to fecha_inicio
+        # Calcular la fecha ajustada sumando semanas a fecha_inicio
         adjusted_date = Prestamo.fecha_inicio + (TipoPrestamo.numero_semanas * text("interval '1 week'"))
 
-        # Subquery to calculate cobranza_ideal
+        # Subconsulta para calcular cobranza_ideal
         cobranza_ideal_case = case(
             (
                 adjusted_date > current_date,
@@ -37,7 +65,7 @@ class ReporteService:
             else_=0
         )
 
-        # Subquery to calculate cobranza_real within the current week
+        # Subconsulta para calcular cobranza_real dentro de la semana actual
         cobranza_real_case = case(
             (
                 and_(
@@ -49,7 +77,7 @@ class ReporteService:
             else_=0
         )
 
-        # Build the query
+        # Construir la consulta
         query = db.session.query(
             Grupo.grupo_id,
             Ruta.ruta_id,
@@ -75,7 +103,11 @@ class ReporteService:
         query = query.outerjoin(TipoPrestamo, Prestamo.tipo_prestamo_id == TipoPrestamo.tipo_prestamo_id)
         query = query.outerjoin(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
 
-        # Group By
+        # Aplicar filtros
+        if filters:
+            query = query.filter(*filters)
+
+        # Agrupar
         query = query.group_by(
             Grupo.grupo_id,
             Ruta.ruta_id,
@@ -89,10 +121,10 @@ class ReporteService:
             Grupo.nombre_grupo
         )
 
-        # Execute the query and fetch results
+        # Ejecutar la consulta y obtener resultados
         results = query.all()
 
-        # Prepare the final data
+        # Preparar los datos finales
         report_data = []
         for row in results:
             cobranza_ideal = float(row.cobranza_ideal or 0)
@@ -131,3 +163,5 @@ class ReporteService:
             })
 
         return report_data
+
+

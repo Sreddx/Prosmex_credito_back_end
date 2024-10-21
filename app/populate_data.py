@@ -78,7 +78,7 @@ def populate_data():
         apellido_materno="One",
         usuario="Cobranza.user@example.com",
         contrasena="cobranza123",
-        rol_id=1  # Assuming the role ID 1 exists
+        rol_id=1  
     )
     db.session.add(leader_user)
     db.session.commit()
@@ -88,7 +88,7 @@ def populate_data():
         apellido_materno="One",
         usuario="titular.user@example.com",
         contrasena="titular123",
-        rol_id=2  # Assuming the role ID 1 exists
+        rol_id=2  
     )
     db.session.add(titular_user)
     db.session.commit()
