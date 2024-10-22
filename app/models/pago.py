@@ -10,6 +10,8 @@ class Pago(db.Model):
     monto_pagado = db.Column(db.Numeric, nullable=False)
     prestamo_id = db.Column(db.Integer, db.ForeignKey('prestamos.prestamo_id'), nullable=False)
 
+    
+    
     def serialize(self):
         prestamo = Prestamo.query.get(self.prestamo_id)
         if not prestamo:

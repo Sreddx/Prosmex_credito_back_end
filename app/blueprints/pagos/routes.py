@@ -63,19 +63,24 @@ def get_grupos():
     return handle_exceptions(func)
 
 @pagos_blueprint.route('/prestamos', methods=['GET'])
-def get_prestamos_by_grupo():
+def get_prestamos_by_grupo_tabla():
     grupo_id = request.args.get('grupo_id', type=int)
     if not grupo_id:
         return make_error_response('El parámetro grupo_id es requerido.', 400)
 
     def func():
-        prestamos = PagoService.get_prestamos_by_grupo(grupo_id)
+        prestamos = PagoService.get_prestamos_by_grupo_tabla(grupo_id)
         return create_response({'prestamos': prestamos}, 200)
     return handle_exceptions(func)
 
+
+
+
 @pagos_blueprint.route('/pagos-prestamo/<int:prestamo_id>', methods=['GET'])
-def get_pagos_by_prestamo(prestamo_id):
+def get_pagos_by_prestamo_tabla(prestamo_id):
     def func():
-        pagos = PagoService.get_pagos_by_prestamo(prestamo_id)
+        if not prestamo_id:
+            return make_error_response('El parámetro prestamo_id es requerido.', 400)
+        pagos = PagoService.get_pagos_by_prestamo_tabla(prestamo_id)
         return create_response({'pagos': pagos}, 200)
     return handle_exceptions(func)

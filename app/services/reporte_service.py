@@ -22,7 +22,7 @@ class ReporteService:
         # Obtener el usuario actual
         user = UsuarioService.get_user_from_jwt()
         user_role_id = user.rol_id  # Obtener el ID del rol
-
+        print(user_role_id)
         # Si el usuario es 'Gestor de cobranza' (rol_id = 1), devuelve una lista vacía
         if user_role_id == 1:
             return []
@@ -99,7 +99,7 @@ class ReporteService:
         query = query.outerjoin(usuarios_gerente, Ruta.usuario_id_gerente == usuarios_gerente.id)
         query = query.outerjoin(usuarios_titular, Grupo.usuario_id_titular == usuarios_titular.id)
         query = query.outerjoin(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
-        query = query.outerjoin(Prestamo, Prestamo.cliente_id == ClienteAval.titular_id)
+        query = query.outerjoin(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
         query = query.outerjoin(TipoPrestamo, Prestamo.tipo_prestamo_id == TipoPrestamo.tipo_prestamo_id)
         query = query.outerjoin(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
 

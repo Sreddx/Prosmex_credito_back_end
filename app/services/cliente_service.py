@@ -131,7 +131,7 @@ class ClienteAvalService:
             clientes_list = []
             for cliente in clientes:
                 clientes_list.append({
-                    'id': cliente.titular_id,
+                    'id': cliente.cliente_id,
                     'nombre': cliente.nombre + ' ' + cliente.apellido_paterno + ' ' + cliente.apellido_materno,
                     'grupo_id': cliente.grupo_id
                 })
@@ -146,7 +146,7 @@ class ClienteAvalService:
             avales = []
             for aval in clientes_avales:
                 avales.append({
-                    'id': aval.titular_id,
+                    'id': aval.cliente_id,
                     'nombre': aval.nombre + ' ' + aval.apellido_paterno + ' ' + aval.apellido_materno,
                     'grupo_id': aval.grupo_id
                 })

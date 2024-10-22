@@ -3,7 +3,7 @@ from sqlalchemy.orm import validates
 
 class ClienteAval(db.Model):
     __tablename__ = 'clientes_avales'
-    titular_id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100))
     apellido_paterno = db.Column(db.String(100))
     apellido_materno = db.Column(db.String(100))
@@ -15,6 +15,8 @@ class ClienteAval(db.Model):
     propiedad = db.Column(db.Enum('casa_propia', 'rentada', 'prestada', name='tipo_propiedad'))
     es_aval = db.Column(db.Boolean)
     grupo_id = db.Column(db.Integer, db.ForeignKey('grupos.grupo_id'))
+    
+    
 
     @validates('cp')
     def validate_cp(self, key, cp):
@@ -31,7 +33,7 @@ class ClienteAval(db.Model):
         return f'{self.nombre} {self.apellido_paterno} {self.apellido_materno}'
     def serialize(self):
         return {
-            'id': self.titular_id,
+            'id': self.cliente_id,
             'nombre': self.nombre,
             'apellido_paterno': self.apellido_paterno,
             'apellido_materno': self.apellido_materno,

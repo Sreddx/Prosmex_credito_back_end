@@ -1,7 +1,8 @@
 import datetime
 import pytz
-from app.models import Pago, Prestamo, Grupo, ClienteAval
+from app.models import Pago, Prestamo, Grupo, ClienteAval, TipoPrestamo
 from app import db
+from sqlalchemy.orm import joinedload
 from flask import current_app as app
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -35,7 +36,6 @@ class PagoService:
             app.logger.error(f"Error creando pago: {str(e)}")
             raise
 
-
     def get_pago(self):
         if not self.pago_id:
             raise ValueError("Pago ID no proporcionado.")
@@ -58,14 +58,13 @@ class PagoService:
             # Only update monto_pagado and prestamo_id, fecha_pago remains the same or updated with current time
             pago.monto_pagado = data.get('monto_pagado', pago.monto_pagado)
             pago.prestamo_id = data.get('prestamo_id', pago.prestamo_id)
-            pago.fecha_pago = datetime.now(pytz.timezone('America/Mexico_City'))  # Update to current date/time
+            pago.fecha_pago = datetime.datetime.now(pytz.timezone('America/Mexico_City'))  # Update to current date/time
             db.session.commit()
             return pago
         except SQLAlchemyError as e:
             db.session.rollback()
             app.logger.error(f"Error actualizando pago: {str(e)}")
             raise ValueError("No se pudo actualizar el pago.")
-
 
     def delete_pago(self):
         pago = self.get_pago()
@@ -104,23 +103,106 @@ class PagoService:
     def get_prestamos_by_grupo(grupo_id):
         try:
             clientes_en_grupo = ClienteAval.query.filter_by(grupo_id=grupo_id).all()
-            id_clientes = [cliente.titular_id for cliente in clientes_en_grupo]
+            id_titulares = [cliente.cliente_id for cliente in clientes_en_grupo]
             
-            prestamos_cliente = Prestamo.query.filter(Prestamo.cliente_id.in_(id_clientes)).all()
+            prestamos_cliente = Prestamo.query.filter(Prestamo.cliente_id.in_(id_titulares)).all()
             prestamos_list = []
             for prestamo in prestamos_cliente:
-                cliente = prestamo.cliente  # Assuming there is a relationship defined in the Prestamo model
+                titular = prestamo.titular  # Usando la relación actualizada
                 prestamos_list.append({
                     'id': prestamo.prestamo_id,
                     'monto': float(prestamo.monto_prestamo),
-                    'cliente_nombrecompleto': cliente.getNombreCompleto()  # Assuming 'nombrecompleto' is a field in Cliente model
+                    'cliente_nombrecompleto': titular.getNombreCompleto()
                 })
             print(prestamos_list)
             return prestamos_list
         except SQLAlchemyError as e:
             app.logger.error(f"Error obteniendo préstamos: {str(e)}")
             raise ValueError("No se pudo obtener la lista de préstamos.")
-    
+
+
+    @staticmethod
+    def get_prestamos_by_grupo_tabla(grupo_id):
+        try:
+            # Obtener el grupo
+            grupo = Grupo.query.get(grupo_id)
+            if not grupo:
+                raise ValueError(f"No se encontró el grupo con ID: {grupo_id}")
+
+            # Obtener los titulares (clientes que no son avales) en el grupo
+            titulares_en_grupo = ClienteAval.query.filter_by(grupo_id=grupo_id, es_aval=False).all()
+            id_titulares = [titular.cliente_id for titular in titulares_en_grupo]
+
+            # Obtener los préstamos de esos titulares con relaciones cargadas
+            prestamos_cliente = Prestamo.query.options(
+                joinedload(Prestamo.titular),
+                joinedload(Prestamo.tipo_prestamo),
+                joinedload(Prestamo.pagos)
+            ).filter(Prestamo.cliente_id.in_(id_titulares)).all()
+
+            prestamos_list = []
+            for prestamo in prestamos_cliente:
+                titular = prestamo.titular
+                tipo_prestamo = prestamo.tipo_prestamo
+                numero_pagos = len(prestamo.pagos) if prestamo.pagos else 0
+                semanas_que_debe = tipo_prestamo.numero_semanas - numero_pagos
+
+                # Sumar el monto total pagado
+                monto_pagado = sum([float(pago.monto_pagado) for pago in prestamo.pagos])
+
+                prestamos_list.append({
+                    'GRUPO': grupo.nombre_grupo,
+                    'CLIENTE': titular.getNombreCompleto(),
+                    'AVAL': prestamo.aval.getNombreCompleto(),
+                    'MONTO_PRÉSTAMO': float(prestamo.monto_prestamo),
+                    'FECHA_PRÉSTAMO': prestamo.fecha_inicio.strftime('%Y-%m-%d'),
+                    'TIPO_PRESTAMO': prestamo.tipo_prestamo.nombre,
+                    'NUMERO_PAGOS': numero_pagos,
+                    'SEMANAS_QUE_DEBE': semanas_que_debe
+                })
+
+            return prestamos_list
+        except SQLAlchemyError as e:
+            app.logger.error(f"Error obteniendo préstamos: {str(e)}")
+            raise ValueError("No se pudo obtener la lista de préstamos.")
+
+
+    @staticmethod
+    def get_pagos_by_prestamo_tabla(prestamo_id):
+        try:
+            # Obtener el préstamo con el titular y su grupo
+            prestamo = Prestamo.query.options(
+                joinedload(Prestamo.titular).joinedload(ClienteAval.grupo)
+            ).get(prestamo_id)
+            if not prestamo:
+                raise ValueError(f"No se encontró el préstamo con ID: {prestamo_id}")
+
+            cliente = prestamo.titular  # Instancia de ClienteAval
+            grupo_id = cliente.grupo_id
+            grupo = Grupo.query.get(grupo_id)
+            if not grupo:
+                raise ValueError(f"No se encontró el grupo para el cliente con ID: {cliente.cliente_id}")
+
+            # Obtener los pagos del préstamo
+            pagos = prestamo.pagos  # Lista de instancias de Pago
+
+            # Construir la lista de pagos con la información requerida
+            pagos_list = []
+            for pago in pagos:
+                pagos_list.append({
+                    'GRUPO': grupo.nombre_grupo,
+                    'CLIENTE': cliente.getNombreCompleto(),
+                    'MONTO_PRÉSTAMO': float(prestamo.monto_prestamo),
+                    'MONTO_PAGO': float(pago.monto_pagado),
+                    'FECHA_PAGO': pago.fecha_pago.strftime('%Y-%m-%d')
+                })
+
+            return pagos_list
+        except SQLAlchemyError as e:
+            app.logger.error(f"Error obteniendo pagos: {str(e)}")
+            raise ValueError("No se pudo obtener la lista de pagos.")
+
+
     @staticmethod
     def get_pagos_by_prestamo(prestamo_id):
         try:

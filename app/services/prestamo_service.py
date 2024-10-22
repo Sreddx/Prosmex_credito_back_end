@@ -94,13 +94,13 @@ class PrestamoService:
             for prestamo in lista_obj_prestamos:
                 prestamos.append({
                     'prestamo_id': prestamo.prestamo_id,
-                    'cliente_id': prestamo.cliente_id,
-                    'cliente_nombre': prestamo.cliente.nombre + " " + prestamo.cliente.apellido_paterno + " " + prestamo.cliente.apellido_materno,  
+                    'cliente_id': prestamo.titular.cliente_id,
+                    'cliente_nombre': prestamo.titular.nombre + " " + prestamo.titular.apellido_paterno + " " + prestamo.titular.apellido_materno,  
                     'fecha_inicio': prestamo.fecha_inicio,
                     'monto_prestamo': prestamo.monto_prestamo,
                     'tipo_prestamo_id': prestamo.tipo_prestamo_id,
                     'tipo_prestamo_nombre': prestamo.tipo_prestamo.nombre,  
-                    'aval_id': prestamo.aval_id,
+                    'aval_id': prestamo.aval.cliente_id,
                     'aval_nombre': prestamo.aval.nombre + " " + prestamo.aval.apellido_paterno + " " + prestamo.aval.apellido_materno 
                 })
             return prestamos

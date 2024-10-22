@@ -10,5 +10,6 @@ reporte_blueprint = Blueprint('reporte', __name__, url_prefix='/reporte')
 def obtener_reporte_general():
     def func():
         reporte = ReporteService.obtener_reporte()
+        print(reporte)
         return create_response({'reporte': reporte}, 200)
     return handle_exceptions(func)

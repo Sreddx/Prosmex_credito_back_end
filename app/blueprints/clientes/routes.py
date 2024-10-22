@@ -10,7 +10,7 @@ def create_cliente():
         data = request.get_json()
         cliente_service = ClienteAvalService()
         new_cliente = cliente_service.create_cliente(data)
-        return create_response({'message': 'Cliente created successfully', 'cliente': new_cliente.titular_id}, 201)
+        return create_response({'message': 'Cliente created successfully', 'cliente': new_cliente.cliente_id}, 201)
 
     return handle_exceptions(func)
 
@@ -33,7 +33,7 @@ def update_cliente(cliente_id):
         cliente_service = ClienteAvalService(cliente_id)
         updated_cliente = cliente_service.update_cliente(data)
         if updated_cliente:
-            return create_response({'message': 'Cliente updated successfully', 'cliente': updated_cliente.titular_id}, 200)
+            return create_response({'message': 'Cliente updated successfully', 'cliente': updated_cliente.cliente_id}, 200)
         else:
             return make_error_response('Cliente not found', 404)
 

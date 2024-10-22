@@ -2,6 +2,7 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 from app.services import PrestamoService
 from app.services import UsuarioService
+from app.services import PagoService
 from app.blueprints.helpers import create_response, make_error_response, handle_exceptions
 
 prestamo_blueprint = Blueprint('prestamo', __name__, url_prefix='/prestamos')
@@ -77,3 +78,4 @@ def list_tipos_prestamo():
         return create_response(tipos_prestamo, 200)
 
     return handle_exceptions(func)
+

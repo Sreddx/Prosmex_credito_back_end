@@ -7,9 +7,10 @@ class Grupo(db.Model):
     ruta_id = db.Column(db.Integer, db.ForeignKey('rutas.ruta_id'))
     usuario_id_titular = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
 
-    # Relationship to ruta one to many
+    # Relaciones
     ruta = db.relationship('Ruta', backref=db.backref('grupos', lazy=True))
     usuarioTitular = db.relationship('Usuario', backref=db.backref('grupos', lazy=True))
+    clientes_avales = db.relationship('ClienteAval', backref='grupo', lazy=True)
     
     
     # Validate that the usuarioGerente has role 4 for gerente and 3 for supervisor
