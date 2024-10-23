@@ -76,7 +76,7 @@ class ReporteService:
             Grupo.nombre_grupo.label('grupo'),
             func.coalesce(func.sum(cobranza_ideal_case.distinct()), 0).label('cobranza_ideal'),
             func.coalesce(pagos_por_grupo.c.total_pagos, 0).label('cobranza_real'),
-            func.coalesce(func.sum(Prestamo.monto_prestamo), 0).label('prestamo_real'),
+            func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0).label('prestamo_real'),
             (func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0) - 
              func.coalesce(func.sum(Pago.monto_pagado.distinct()), 0)).label('prestamo_papel'),
             func.count(func.distinct(Prestamo.prestamo_id)).label('numero_de_prestamos')
