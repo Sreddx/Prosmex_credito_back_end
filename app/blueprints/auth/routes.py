@@ -25,7 +25,7 @@ def login():
             if user is None:
                 raise ValueError('Usuario no encontrado')
             current_app.logger.debug(f'User: {user.serialize()}')
-            
+            print(f'User: {user.serialize()}')
             if user and bcrypt.check_password_hash(user.contrasena, password):
                 access_token = create_access_token(identity=user.id)
                 response = create_response({

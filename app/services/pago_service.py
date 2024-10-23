@@ -162,7 +162,8 @@ class PagoService:
                     'FECHA_PRÉSTAMO': prestamo.fecha_inicio.strftime('%Y-%m-%d'),
                     'TIPO_PRESTAMO': prestamo.tipo_prestamo.nombre,
                     'NUMERO_PAGOS': numero_pagos,
-                    'SEMANAS_QUE_DEBE': semanas_que_debe
+                    'SEMANAS_QUE_DEBE': semanas_que_debe,
+                    'prestamo_id': prestamo.prestamo_id,
                 })
 
             return prestamos_list
@@ -196,7 +197,7 @@ class PagoService:
                 pagos_list.append({
                     'GRUPO': grupo.nombre_grupo,
                     'CLIENTE': cliente.getNombreCompleto(),
-                    'MONTO_PRÉSTAMO': float(prestamo.monto_prestamo),
+                    'MONTO_PRESTAMO': float(prestamo.monto_prestamo),
                     'MONTO_PAGO': float(pago.monto_pagado),
                     'FECHA_PAGO': pago.fecha_pago.strftime('%Y-%m-%d')
                 })
