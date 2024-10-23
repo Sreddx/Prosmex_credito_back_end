@@ -10,7 +10,7 @@ class Prestamo(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey('clientes_avales.cliente_id'), nullable=False)
     aval_id = db.Column(db.Integer, db.ForeignKey('clientes_avales.cliente_id'), nullable=True)
     tipo_prestamo_id = db.Column(db.Integer, db.ForeignKey('tipos_prestamo.tipo_prestamo_id'), nullable=False)
-
+    completado = db.Column(db.Boolean, default=False, nullable=False)
     
     # Relaciones
     titular = db.relationship(
@@ -40,6 +40,16 @@ class Prestamo(db.Model):
         CheckConstraint('monto_prestamo > 0', name='check_monto_prestamo_positive'),
         UniqueConstraint('aval_id', name='uq_aval_id')  # Enforce unique aval_id
     )
+    
+    
+    def verificar_completado(self):
+        """Calcula si el préstamo está completo sumando los pagos."""
+        monto_pagado_total = sum([float(pago.monto_pagado) for pago in self.pagos])
+        if monto_pagado_total >= float(self.monto_prestamo):
+            self.completado = True
+        else:
+            self.completado = False
+        db.session.commit()
     
     # Validation for monto_prestamo > 0
     @validates('monto_prestamo')
@@ -78,5 +88,6 @@ class Prestamo(db.Model):
             'fecha_inicio': self.fecha_inicio,
             'monto_prestamo': self.monto_prestamo,
             'tipo_prestamo_id': self.tipo_prestamo_id,
-            'aval_id': self.aval_id
+            'aval_id': self.aval_id,
+            'completado': self.completado
         }

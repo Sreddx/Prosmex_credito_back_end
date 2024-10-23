@@ -1,4 +1,5 @@
 from app.models import Prestamo, TipoPrestamo
+from app.models.cliente_aval import ClienteAval
 from app.services import usuario_service
 from app import db
 from flask import current_app as app
@@ -107,6 +108,19 @@ class PrestamoService:
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando préstamos: {str(e)}")
             raise ValueError("No se pudo obtener la lista de préstamos.")
+        
+    def count_prestamos_activos(self, grupo_id):
+        # Dado un id de grupo, obtiene el conteo de préstamos activos (no completados) de ese grupo
+        try:
+            count_activos = Prestamo.query.join(ClienteAval, ClienteAval.cliente_id == Prestamo.cliente_id)\
+                                        .filter(ClienteAval.grupo_id == grupo_id, Prestamo.completado == False)\
+                                        .count()
+            return count_activos
+        except Exception as e:
+            app.logger.error(f"Error contando préstamos activos: {str(e)}")
+            raise ValueError("No se pudo obtener el conteo de préstamos activos.")
+
+        
     def list_tipos_prestamo(self):
         try:
             tipos_prestamo = TipoPrestamo.query.all()
@@ -120,3 +134,5 @@ class PrestamoService:
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando tipos de préstamo: {str(e)}")
             raise ValueError("No se pudo obtener la lista de tipos de préstamo.")
+        
+    

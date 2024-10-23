@@ -15,6 +15,7 @@ from flask_jwt_extended import get_jwt_identity
 from app.services.usuario_service import UsuarioService
 from datetime import datetime, timedelta
 import pytz
+from app.services import PrestamoService
 
 class ReporteService:
     @staticmethod
@@ -63,10 +64,8 @@ class ReporteService:
             .group_by(Grupo.grupo_id)
         ).subquery()
 
-        # Calcular cobranza_ideal
+        # Calcular cobranza ideal
         cobranza_ideal_case = Prestamo.monto_prestamo * TipoPrestamo.porcentaje_semanal
-
-        
 
         query = db.session.query(
             Grupo.grupo_id,
@@ -82,8 +81,6 @@ class ReporteService:
             (func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0) - 
              func.coalesce(func.sum(Pago.monto_pagado.distinct()), 0)).label('prestamo_papel'),
             func.count(func.distinct(Prestamo.prestamo_id)).label('numero_de_creditos'),
-            
-
         ).select_from(Grupo)
 
         # Joins
@@ -97,7 +94,6 @@ class ReporteService:
         query = query.outerjoin(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
         query = query.outerjoin(pagos_por_grupo, pagos_por_grupo.c.grupo_id == Grupo.grupo_id)
 
-        
         if filters:
             query = query.filter(*filters)
 
@@ -117,32 +113,16 @@ class ReporteService:
 
         results = query.all()
 
-        # Agregar debug para verificar los pagos
-        # print("\nDebug - Pagos por grupo:")
-        # debug_query = db.session.query(
-        #     Grupo.grupo_id,
-        #     func.sum(Pago.monto_pagado).label('total_pagos')
-        # ).join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)\
-        #  .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)\
-        #  .join(Pago, Pago.prestamo_id == Prestamo.prestamo_id)\
-        #  .filter(
-        #     and_(
-        #         Pago.fecha_pago >= start_of_week,
-        #         Pago.fecha_pago <= end_of_week
-        #     )
-        # ).group_by(Grupo.grupo_id)
-        
-        # for row in debug_query.all():
-        #     print(f"Grupo {row.grupo_id}: {row.total_pagos}")
-
         report_data = []
         for row in results:
+            # Obtener el conteo de préstamos activos para este grupo
+            prestamos_activos_count = PrestamoService().count_prestamos_activos(row.grupo_id)
+
             cobranza_ideal = float(row.cobranza_ideal or 0)
             cobranza_real = float(row.cobranza_real or 0)
             prestamo_real = float(row.prestamo_real or 0)
             prestamo_papel = float(row.prestamo_papel or 0)
             numero_de_creditos = row.numero_de_creditos or 0
-
 
             morosidad_monto = cobranza_ideal - cobranza_real
             morosidad_porcentaje = None
@@ -170,7 +150,8 @@ class ReporteService:
                 'morosidad_monto': morosidad_monto,
                 'morosidad_porcentaje': morosidad_porcentaje,
                 'porcentaje_prestamo': porcentaje_prestamo,
-                'sobrante': sobrante
+                'sobrante': sobrante,
+                'numero_de_prestamos': prestamos_activos_count  
             })
 
         return report_data

@@ -12,24 +12,28 @@ class PagoService:
 
     def create_pago(self, data):
         try:
-            # Validate required fields except 'fecha_pago'
+            # Validar campos requeridos
             required_fields = ['monto_pagado', 'prestamo_id']
             missing_fields = [field for field in required_fields if field not in data]
             if missing_fields:
                 raise ValueError(f"Faltan campos requeridos: {', '.join(missing_fields)}")
 
-            # Ensure the prestamo exists
+            # Asegurarse de que el préstamo exista
             prestamo = Prestamo.query.get(data['prestamo_id'])
             if not prestamo:
                 raise ValueError("El préstamo especificado no existe.")
 
-            # Create the Pago instance with the current datetime (fecha_pago is automatic)
+            # Crear el pago
             new_pago = Pago(
                 monto_pagado=data['monto_pagado'],
                 prestamo_id=data['prestamo_id']
             )
             db.session.add(new_pago)
             db.session.commit()
+
+            # Verificar si el préstamo se ha completado
+            prestamo.verificar_completado()
+
             return new_pago
         except (ValueError, SQLAlchemyError) as e:
             db.session.rollback()
