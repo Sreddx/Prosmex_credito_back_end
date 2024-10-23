@@ -1,5 +1,3 @@
-# app/services/reporte_service.py
-
 from sqlalchemy import func, case, and_, text
 from sqlalchemy.orm import aliased
 from app.models import (
@@ -10,71 +8,64 @@ from app.models import (
     Prestamo,
     TipoPrestamo,
     Pago,
-    Rol  # Asegúrate de importar el modelo Rol si lo necesitas
+    Rol
 )
 from app import db
 from flask_jwt_extended import get_jwt_identity
 from app.services.usuario_service import UsuarioService
+from datetime import datetime, timedelta
+import pytz
 
 class ReporteService:
     @staticmethod
     def obtener_reporte():
-        # Obtener el usuario actual
         user = UsuarioService.get_user_from_jwt()
-        user_role_id = user.rol_id  # Obtener el ID del rol
-        print(user_role_id)
-        # Si el usuario es 'Gestor de cobranza' (rol_id = 1), devuelve una lista vacía
+        user_role_id = user.rol_id
+        
         if user_role_id == 1:
             return []
 
-        # Inicializar filtros
         filters = []
 
-        # Aplicar filtros basados en el rol
-        if user_role_id in [5, 6]:  # Director (5) y Admin (6)
-            # No se aplican filtros adicionales
+        if user_role_id in [5, 6]:
             pass
-        elif user_role_id == 4:  # Gerente
-            # Filtrar por rutas asignadas al gerente
+        elif user_role_id == 4:
             filters.append(Ruta.usuario_id_gerente == user.id)
-        elif user_role_id == 3:  # Supervisor
-            # Filtrar por rutas asignadas al supervisor
+        elif user_role_id == 3:
             filters.append(Ruta.usuario_id_supervisor == user.id)
-        elif user_role_id == 2:  # Titular
-            # Filtrar por grupos asignados al titular
+        elif user_role_id == 2:
             filters.append(Grupo.usuario_id_titular == user.id)
 
-        # Aliases para distinguir entre gerente, supervisor y titular
         usuarios_gerente = aliased(Usuario)
         usuarios_supervisor = aliased(Usuario)
         usuarios_titular = aliased(Usuario)
 
-        # Inicio de la semana actual (lunes)
-        current_date = func.current_date()
-        start_of_week = func.date_trunc('week', current_date)
+        mexico_city_tz = pytz.timezone('America/Mexico_City')
+        current_date = datetime.now(mexico_city_tz).date()
+        start_of_week = current_date - timedelta(days=current_date.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
 
-        # Calcular la fecha ajustada sumando semanas a fecha_inicio
-        adjusted_date = Prestamo.fecha_inicio + (TipoPrestamo.numero_semanas * text("interval '1 week'"))
-
-        # Subconsulta para calcular cobranza_ideal
-        cobranza_ideal_case = Prestamo.monto_prestamo * TipoPrestamo.porcentaje_semanal
-
-        # Subconsulta para calcular cobranza_real dentro de la semana actual
-        cobranza_real_case = func.sum(
-        case(
-            (
+        # Subconsulta para pagos por grupo
+        pagos_por_grupo = (
+            db.session.query(
+                Grupo.grupo_id.label('grupo_id'),
+                func.sum(Pago.monto_pagado).label('total_pagos')
+            )
+            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
+            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .join(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
+            .filter(
                 and_(
                     Pago.fecha_pago >= start_of_week,
-                    Pago.fecha_pago <= current_date
-                ),
-                Pago.monto_pagado
-            ),
-            else_=0
-        )
-    )
+                    Pago.fecha_pago <= end_of_week
+                )
+            )
+            .group_by(Grupo.grupo_id)
+        ).subquery()
 
+        # Calcular cobranza_ideal
+        cobranza_ideal_case = Prestamo.monto_prestamo * TipoPrestamo.porcentaje_semanal
 
-        # Construir la consulta
         query = db.session.query(
             Grupo.grupo_id,
             Ruta.ruta_id,
@@ -84,12 +75,12 @@ class ReporteService:
             Ruta.nombre_ruta.label('ruta'),
             Grupo.nombre_grupo.label('grupo'),
             func.coalesce(func.sum(cobranza_ideal_case.distinct()), 0).label('cobranza_ideal'),
-            func.coalesce(cobranza_real_case, 0).label('cobranza_real'),  # Aquí se utiliza la subconsulta actualizada
+            func.coalesce(pagos_por_grupo.c.total_pagos, 0).label('cobranza_real'),
             func.coalesce(func.sum(Prestamo.monto_prestamo), 0).label('prestamo_real'),
-            (func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0) - func.coalesce(func.sum(Pago.monto_pagado.distinct()), 0)).label('prestamo_papel'),
+            (func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0) - 
+             func.coalesce(func.sum(Pago.monto_pagado.distinct()), 0)).label('prestamo_papel'),
             func.count(func.distinct(Prestamo.prestamo_id)).label('numero_de_prestamos')
         ).select_from(Grupo)
-
 
         # Joins
         query = query.outerjoin(Ruta, Grupo.ruta_id == Ruta.ruta_id)
@@ -100,12 +91,11 @@ class ReporteService:
         query = query.outerjoin(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
         query = query.outerjoin(TipoPrestamo, Prestamo.tipo_prestamo_id == TipoPrestamo.tipo_prestamo_id)
         query = query.outerjoin(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
+        query = query.outerjoin(pagos_por_grupo, pagos_por_grupo.c.grupo_id == Grupo.grupo_id)
 
-        # Aplicar filtros
         if filters:
             query = query.filter(*filters)
 
-        # Agrupar
         query = query.group_by(
             Grupo.grupo_id,
             Ruta.ruta_id,
@@ -116,13 +106,30 @@ class ReporteService:
             usuarios_titular.nombre,
             usuarios_titular.apellido_paterno,
             Ruta.nombre_ruta,
-            Grupo.nombre_grupo
+            Grupo.nombre_grupo,
+            pagos_por_grupo.c.total_pagos
         )
 
-        # Ejecutar la consulta y obtener resultados
         results = query.all()
 
-        # Preparar los datos finales
+        # Agregar debug para verificar los pagos
+        print("\nDebug - Pagos por grupo:")
+        debug_query = db.session.query(
+            Grupo.grupo_id,
+            func.sum(Pago.monto_pagado).label('total_pagos')
+        ).join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)\
+         .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)\
+         .join(Pago, Pago.prestamo_id == Prestamo.prestamo_id)\
+         .filter(
+            and_(
+                Pago.fecha_pago >= start_of_week,
+                Pago.fecha_pago <= end_of_week
+            )
+        ).group_by(Grupo.grupo_id)
+        
+        for row in debug_query.all():
+            print(f"Grupo {row.grupo_id}: {row.total_pagos}")
+
         report_data = []
         for row in results:
             cobranza_ideal = float(row.cobranza_ideal or 0)
