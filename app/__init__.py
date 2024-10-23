@@ -51,7 +51,7 @@ def create_app():
         except Exception as e:
             raise ValueError(f"Error loading initial data: {str(e)}")
 
-    CORS(app, supports_credentials=True, origins=["http://localhost:5050"], allow_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN"], expose_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN"])
+    CORS(app, supports_credentials=True, origins=["*"], allow_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN"], expose_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN"])
     
     # Initialize objects of the extensions
     bcrypt.init_app(app)

@@ -57,16 +57,11 @@ class ReporteService:
         adjusted_date = Prestamo.fecha_inicio + (TipoPrestamo.numero_semanas * text("interval '1 week'"))
 
         # Subconsulta para calcular cobranza_ideal
-        cobranza_ideal_case = case(
-            (
-                adjusted_date > current_date,
-                Prestamo.monto_prestamo / TipoPrestamo.numero_semanas
-            ),
-            else_=0
-        )
+        cobranza_ideal_case = Prestamo.monto_prestamo * TipoPrestamo.porcentaje_semanal
 
         # Subconsulta para calcular cobranza_real dentro de la semana actual
-        cobranza_real_case = case(
+        cobranza_real_case = func.sum(
+        case(
             (
                 and_(
                     Pago.fecha_pago >= start_of_week,
@@ -76,6 +71,8 @@ class ReporteService:
             ),
             else_=0
         )
+    )
+
 
         # Construir la consulta
         query = db.session.query(
@@ -87,11 +84,12 @@ class ReporteService:
             Ruta.nombre_ruta.label('ruta'),
             Grupo.nombre_grupo.label('grupo'),
             func.coalesce(func.sum(cobranza_ideal_case.distinct()), 0).label('cobranza_ideal'),
-            func.coalesce(func.sum(cobranza_real_case.distinct()), 0).label('cobranza_real'),
-            func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0).label('prestamo_real'),
+            func.coalesce(cobranza_real_case, 0).label('cobranza_real'),  # Aquí se utiliza la subconsulta actualizada
+            func.coalesce(func.sum(Prestamo.monto_prestamo), 0).label('prestamo_real'),
             (func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0) - func.coalesce(func.sum(Pago.monto_pagado.distinct()), 0)).label('prestamo_papel'),
             func.count(func.distinct(Prestamo.prestamo_id)).label('numero_de_prestamos')
         ).select_from(Grupo)
+
 
         # Joins
         query = query.outerjoin(Ruta, Grupo.ruta_id == Ruta.ruta_id)
@@ -163,5 +161,3 @@ class ReporteService:
             })
 
         return report_data
-
-
