@@ -13,3 +13,18 @@ def obtener_reporte_general():
         print(reporte)
         return create_response({'reporte': reporte}, 200)
     return handle_exceptions(func)
+
+@reporte_blueprint.route('/sobrante-grupo/<int:grupo_id>', methods=['GET'])
+def obtener_sobrante_grupo(grupo_id):
+    def func():
+        sobrante_grupo = ReporteService.obtener_sobrante_por_grupo(grupo_id)
+        return create_response({'sobrante_grupo': sobrante_grupo}, 200)
+    return handle_exceptions(func)
+
+@reporte_blueprint.route('/sobrante-semanal/<int:grupo_id>', methods=['GET'])
+def obtener_sobrante_semanal(grupo_id):
+    def func():
+        sobrante_semanal = ReporteService.obtener_sobrante_semanal(grupo_id)
+        return create_response({'sobrante_semanal': sobrante_semanal}, 200)
+    return handle_exceptions(func)
+

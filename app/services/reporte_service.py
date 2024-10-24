@@ -155,3 +155,86 @@ class ReporteService:
             })
 
         return report_data
+    
+    @staticmethod
+    def obtener_sobrante_por_grupo(grupo_id):
+        # Subconsulta para obtener los préstamos únicos por grupo
+        prestamos_grupo = (
+            db.session.query(
+                func.sum(Prestamo.monto_prestamo).label('prestamo_real')
+            )
+            .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .filter(ClienteAval.grupo_id == grupo_id)
+        ).scalar()
+
+        # Subconsulta para obtener la suma de los pagos realizados en el grupo
+        pagos_grupo = (
+            db.session.query(
+                func.sum(Pago.monto_pagado).label('cobranza_real')
+            )
+            .join(Prestamo, Pago.prestamo_id == Prestamo.prestamo_id)
+            .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .filter(ClienteAval.grupo_id == grupo_id)
+        ).scalar()
+
+        # Validamos que los valores sean correctos, evitando None
+        cobranza_real = float(pagos_grupo or 0)
+        prestamo_real = float(prestamos_grupo or 0)
+
+        # Calculamos el sobrante
+        sobrante = cobranza_real - prestamo_real
+
+        # Retornamos el reporte final con el sobrante
+        return {
+            'grupo_id': grupo_id,
+            'cobranza_real': cobranza_real,
+            'prestamo_real': prestamo_real,
+            'sobrante': sobrante
+        }
+        
+    @staticmethod
+    def obtener_sobrante_semanal(grupo_id):
+        mexico_city_tz = pytz.timezone('America/Mexico_City')
+        current_date = datetime.now(mexico_city_tz).date()
+        start_of_week = current_date - timedelta(days=current_date.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+
+        # Subconsulta para obtener la cobranza real durante la semana
+        cobranza_real = (
+            db.session.query(
+                func.sum(Pago.monto_pagado).label('cobranza_real')
+            )
+            .join(Prestamo, Pago.prestamo_id == Prestamo.prestamo_id)
+            .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .filter(
+                ClienteAval.grupo_id == grupo_id,
+                Pago.fecha_pago >= start_of_week,
+                Pago.fecha_pago <= end_of_week
+            )
+        ).scalar()
+
+        # Subconsulta para calcular la cobranza ideal semanal
+        cobranza_ideal = (
+            db.session.query(
+                func.sum(Prestamo.monto_prestamo * TipoPrestamo.porcentaje_semanal).label('cobranza_ideal')
+            )
+            .join(TipoPrestamo, Prestamo.tipo_prestamo_id == TipoPrestamo.tipo_prestamo_id)  # Corrected join
+            .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .filter(ClienteAval.grupo_id == grupo_id)
+        ).scalar()
+
+        # Aseguramos que no sean valores None
+        cobranza_real = float(cobranza_real or 0)
+        cobranza_ideal = float(cobranza_ideal or 0)
+
+        # Calculamos el sobrante semanal
+        sobrante = cobranza_real - cobranza_ideal
+
+        # Retornamos el reporte final con el sobrante semanal
+        return {
+            'grupo_id': grupo_id,
+            'cobranza_real': cobranza_real,
+            'cobranza_ideal': cobranza_ideal,
+            'sobrante': sobrante,
+            'semana': f"{start_of_week} to {end_of_week}"
+        }
