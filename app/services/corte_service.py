@@ -16,7 +16,7 @@ class CorteService:
         try:
             new_corte = Corte(
                 usuario_id=usuario_id,  # Relación con el Usuario
-                fecha_inicio=datetime.now(TIMEZONE),
+                fecha=datetime.now(TIMEZONE),
                 corte_total=data['corte_total'],
                 total_gastos=data['total_gastos'],
                 semilla=data['semilla']

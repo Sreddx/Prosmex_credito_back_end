@@ -10,8 +10,8 @@ class Bono(db.Model):
     
     
     
-    def regla_bono(self, cobranza_ideal_grupo, faltas_de_grupo):
-        if cobranza_ideal_grupo >= self.entrega_min and cobranza_ideal_grupo <= self.entrega_max:
+    def regla_bono(self, cobranza_real_grupo, faltas_de_grupo):
+        if cobranza_real_grupo >= self.entrega_min and cobranza_real_grupo <= self.entrega_max:
             if faltas_de_grupo <= self.fallas:
                 return True
             else:

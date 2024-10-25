@@ -12,9 +12,12 @@ from app.models import (
 )
 from app import db
 from flask_jwt_extended import get_jwt_identity
+from app.models.bono import Bono
+from app.models.falta import Falta
 from app.services.usuario_service import UsuarioService
 from datetime import datetime, timedelta
 import pytz
+from app.constants import TIMEZONE
 from app.services import PrestamoService
 
 class ReporteService:
@@ -275,7 +278,92 @@ class ReporteService:
         )
 
         # Devuelve el total de sobrante por usuario
+        return total_sobrante
+        
+    # CALCULO DE BONOS --------------------------------------------------------------------------
+    @staticmethod
+    def calcular_bono_por_grupo(grupo_id):
+        
+        current_date = datetime.now(TIMEZONE).date()
+        start_of_week = current_date - timedelta(days=current_date.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+
+        # Obtener la cobranza real de la semana sumando los pagos de los préstamos en esa semana
+        cobranza_real_semanal = (
+            db.session.query(func.sum(Pago.monto_pagado).label('cobranza_real'))
+            .join(Prestamo, Pago.prestamo_id == Prestamo.prestamo_id)
+            .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .filter(
+                ClienteAval.grupo_id == grupo_id,
+                Pago.fecha_pago >= start_of_week,
+                Pago.fecha_pago <= end_of_week
+            )
+        ).scalar() or 0  # Asegurarse de que sea al menos 0
+
+        # Contar las faltas del grupo en la semana
+        faltas_de_grupo = (
+            db.session.query(func.count(Falta.id).label('faltas'))
+            .join(Prestamo, Falta.prestamo_id == Prestamo.prestamo_id)
+            .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .filter(
+                ClienteAval.grupo_id == grupo_id,
+                Falta.fecha >= start_of_week,
+                Falta.fecha <= end_of_week
+            )
+        ).scalar() or 0  # Asegurarse de que sea al menos 0
+
+        # Iterar sobre los posibles bonos y verificar si el grupo cumple con los criterios
+        bonos = db.session.query(Bono).all()
+        bono_aplicado = None
+        for bono in bonos:
+            if bono.regla_bono(cobranza_real_semanal, faltas_de_grupo):
+                bono_aplicado = bono
+                break
+
+        # Retornar el bono y la cobranza real de la semana
         return {
-            'user_id': user_id,
-            'total_sobrante': total_sobrante
+            'grupo_id': grupo_id,
+            'cobranza_real_semanal': cobranza_real_semanal,
+            'faltas_de_grupo': faltas_de_grupo,
+            'bono_aplicado': bono_aplicado.serialize() if bono_aplicado else None
         }
+
+    @staticmethod
+    def calcular_bono_para_grupos_de_titular(user_id):
+        # Obtener los grupos donde el usuario es el titular
+        grupos = db.session.query(Grupo).filter(Grupo.usuario_id_titular == user_id).all()
+        report_data = []
+
+        # Calcular bono y cobranza real para cada grupo del titular
+        for grupo in grupos:
+            reporte_grupo = ReporteService.calcular_bono_por_grupo(grupo.grupo_id)
+            report_data.append(reporte_grupo)
+
+        return report_data
+    
+    @staticmethod
+    def calcular_bono_global_titular(user_id):
+        # Obtener los grupos donde el usuario es el titular
+        grupos = db.session.query(Grupo).filter(Grupo.usuario_id_titular == user_id).all()
+        total_bono = 0
+        
+
+        # Calcular bono para cada grupo y sumar los montos de los bonos aplicados
+        for grupo in grupos:
+            reporte_grupo = ReporteService.calcular_bono_por_grupo(grupo.grupo_id)
+            
+            
+            # Si el grupo tiene un bono aplicado, sumar el monto del bono
+            if reporte_grupo['bono_aplicado']:
+                total_bono += reporte_grupo['bono_aplicado']['monto']
+
+        # Retornar el total del bono para todos los grupos del titular
+        return total_bono
+    
+    # CALCULO DE BONOS --------------------------------------------------------------------------
+    
+    
+    
+    
+    
+    

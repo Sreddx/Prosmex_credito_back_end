@@ -37,3 +37,32 @@ def obtener_sobrante_total_usuario():
         sobrante_total = ReporteService.obtener_sobrante_total_usuario_por_prestamo(user_id)
         return create_response({'sobrante_total': sobrante_total}, 200)
     return handle_exceptions(func)
+
+
+# Bono de cada grupo para el titular dado
+@reporte_blueprint.route('/bono-grupos-titular', methods=['GET'])
+@jwt_required()
+def obtener_bono_para_grupos_titular():
+    def func():
+        user_id = get_jwt_identity()  # Obtener el user_id del usuario autenticado
+        reporte_bonos = ReporteService.calcular_bono_para_grupos_de_titular(user_id)
+        return create_response({'reporte_bonos': reporte_bonos}, 200)
+    return handle_exceptions(func)
+
+# Bono total del titular dado
+@reporte_blueprint.route('/bono-global-titular', methods=['GET'])
+@jwt_required()
+def obtener_bono_global_titular():
+    def func():
+        # Obtener el user_id del usuario autenticado
+        user_id = get_jwt_identity()
+
+        # Llamar a la función que calcula el bono global para el titular
+        total_bono = ReporteService.calcular_bono_global_titular(user_id)
+
+        # Devolver la respuesta con los detalles del bono global
+        return create_response({'total_bono': total_bono}, 200)
+    
+    return handle_exceptions(func)
+
+

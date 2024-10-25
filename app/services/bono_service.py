@@ -75,3 +75,5 @@ class BonoService:
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando bonos: {str(e)}")
             raise ValueError("No se pudo obtener la lista de bonos.")
+        
+    
