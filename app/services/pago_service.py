@@ -148,8 +148,20 @@ class PagoService:
             for prestamo in prestamos_cliente:
                 titular = prestamo.titular
                 tipo_prestamo = prestamo.tipo_prestamo
+                # Calcular el número de pagos y semanas que debe
                 numero_pagos = len(prestamo.pagos) if prestamo.pagos else 0
-                semanas_que_debe = tipo_prestamo.numero_semanas - numero_pagos
+                cobranza_ideal_semanal = float(prestamo.monto_prestamo) * (float(tipo_prestamo.porcentaje_semanal))
+                print(cobranza_ideal_semanal)
+                semanas_que_debe = 0
+
+                monto_acumulado = 0
+                for pago in prestamo.pagos:
+                    monto_acumulado = float(pago.monto_pagado)
+                    if monto_acumulado >= cobranza_ideal_semanal:
+                        print(f'Pago: {pago.pago_id} con monto {pago.monto_pagado} >= {cobranza_ideal_semanal}')
+                        semanas_que_debe += 1
+
+                semanas_que_debe = tipo_prestamo.numero_semanas - semanas_que_debe
 
                 # Sumar el monto total pagado
                 monto_pagado = sum([float(pago.monto_pagado) for pago in prestamo.pagos])

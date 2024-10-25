@@ -124,12 +124,7 @@ class PrestamoService:
     def list_tipos_prestamo(self):
         try:
             tipos_prestamo = TipoPrestamo.query.all()
-            tipos = []
-            for tipo in tipos_prestamo:
-                tipos.append({
-                    'tipo_prestamo_id': tipo.tipo_prestamo_id,
-                    'nombre': tipo.nombre
-                })
+            tipos = [tipos_prestamo.serialize() for tipos_prestamo in tipos_prestamo]
             return tipos
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando tipos de préstamo: {str(e)}")
