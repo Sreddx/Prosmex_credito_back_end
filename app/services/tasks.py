@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta
 from app.models import Prestamo
-from flask import current_app
+from app.constants import TIMEZONE
 
 def verificar_pagos_semanal():
+    print("Cronjob ejecutado: Verificación de pagos semanal.")
     """
     Verifica todos los préstamos activos para ver si cumplieron con la cobranza ideal durante la semana anterior.
     """
     # Obtener la fecha y hora actuales en la zona horaria de Ciudad de México
-    ahora = datetime.now(current_app.config['TIMEZONE'])
+    ahora = datetime.now(TIMEZONE)
     hoy = ahora.date()
     
     # Obtener el lunes de la semana anterior

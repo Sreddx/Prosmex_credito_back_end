@@ -10,9 +10,11 @@ class Usuario(db.Model):
     contrasena = db.Column(db.String(120), nullable=False)
     rol_id = db.Column(db.Integer, db.ForeignKey('roles.rol_id'))
     
-    
-    # Relationship
+    # Relación con Rol
     rol = db.relationship('Rol', backref=db.backref('usuarios', lazy=True))
+
+    # Relación uno a muchos con Corte, único `backref` aquí
+    cortes = db.relationship('Corte', backref='usuario', lazy=True)
 
     def serialize(self):
         return {

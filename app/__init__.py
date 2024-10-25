@@ -8,6 +8,7 @@ from flask_migrate import Migrate, migrate as run_migration, upgrade as apply_up
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from app.services import verificar_pagos_semanal
+from app.constants import TIMEZONE
 import os
 
 
@@ -15,7 +16,7 @@ def iniciar_cronjobs(app):
     """
     Configura el cronjob que ejecuta la función de verificar_pagos_semanal cada domingo a las 00:00 horas.
     """
-    scheduler = BackgroundScheduler(timezone=app.config['TIMEZONE'])
+    scheduler = BackgroundScheduler(timezone=TIMEZONE)
 
     # Configurar el cronjob para los domingos a las 00:00
     trigger = CronTrigger(day_of_week='sun', hour=0, minute=0)
@@ -23,6 +24,8 @@ def iniciar_cronjobs(app):
     # Agregar el trabajo al scheduler
     scheduler.add_job(func=verificar_pagos_semanal, trigger=trigger)
     scheduler.start()
+    print("Cronjob 'verificar_pagos_semanal' registrado para ejecutarse cada domingo a las 00:00.")
+    print("Trabajos programados:", scheduler.get_jobs())
 
 def create_app():
     app = Flask(__name__)
@@ -75,7 +78,7 @@ def create_app():
     jwt.init_app(app)
 
     # Import and register blueprints
-    from .blueprints import auth_blueprint, user_blueprint, role_blueprint, cliente_blueprint, prestamo_blueprint, grupos_blueprint, rutas_blueprint, pagos_blueprint, reporte_blueprint
+    from .blueprints import auth_blueprint, user_blueprint, role_blueprint, cliente_blueprint, prestamo_blueprint, grupos_blueprint, rutas_blueprint, pagos_blueprint, reporte_blueprint, cortes_blueprint
 
     app.register_blueprint(auth_blueprint)
     app.register_blueprint(user_blueprint)
@@ -86,6 +89,7 @@ def create_app():
     app.register_blueprint(rutas_blueprint)
     app.register_blueprint(pagos_blueprint)
     app.register_blueprint(reporte_blueprint)
+    app.register_blueprint(cortes_blueprint)
 
     # Tareas programadas
     iniciar_cronjobs(app)

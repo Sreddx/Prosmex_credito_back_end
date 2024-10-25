@@ -1,16 +1,23 @@
 from app.models import Corte
 from app import db
-from flask import current_app as app
 from sqlalchemy.exc import SQLAlchemyError
+from flask import current_app as app
+from app.constants import TIMEZONE
+from datetime import datetime
 
 class CorteService:
     def __init__(self, corte_id=None):
         self.corte_id = corte_id
 
-    def create_corte(self, data):
+    def create_corte(self, data, usuario_id, grupo_id):
+        """
+        Crea un nuevo corte, vinculando un usuario y un grupo.
+        """
         try:
             new_corte = Corte(
-                fecha=data['fecha'],
+                usuario_id=usuario_id,  # Relación con el Usuario
+                grupo_id=grupo_id,  # Relación con el Grupo
+                fecha_inicio=datetime.now(TIMEZONE),
                 corte_total=data['corte_total'],
                 total_gastos=data['total_gastos'],
                 semilla=data['semilla']
@@ -42,7 +49,6 @@ class CorteService:
             return None
 
         try:
-            corte.fecha = data.get('fecha', corte.fecha)
             corte.corte_total = data.get('corte_total', corte.corte_total)
             corte.total_gastos = data.get('total_gastos', corte.total_gastos)
             corte.semilla = data.get('semilla', corte.semilla)

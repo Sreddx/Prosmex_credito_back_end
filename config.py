@@ -11,7 +11,7 @@ class Config:
     # Establece la clave secreta y la clave JWT
     SECRET_KEY = os.environ.get('SECRET_KEY', 'prosmex_luis_sebas')
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'prosmex_luis_sebas')
-    TIMEZONE =  pytz.timezone('America/Mexico_City')
+    
 
 class localConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
