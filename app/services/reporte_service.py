@@ -23,27 +23,26 @@ from app.services import PrestamoService
 class ReporteService:
     @staticmethod
     def obtener_reporte():
+        # Configuración inicial y obtención del usuario
         user = UsuarioService.get_user_from_jwt()
         user_role_id = user.rol_id
         
         if user_role_id == 1:
             return []
 
+        # Definir filtros según rol de usuario
         filters = []
-
-        if user_role_id in [5, 6]:
-            pass
-        elif user_role_id == 4:
+        if user_role_id == 4:
             filters.append(Ruta.usuario_id_gerente == user.id)
         elif user_role_id == 3:
             filters.append(Ruta.usuario_id_supervisor == user.id)
         elif user_role_id == 2:
             filters.append(Grupo.usuario_id_titular == user.id)
 
+        # Definición de subconsultas y configuración de fechas
         usuarios_gerente = aliased(Usuario)
         usuarios_supervisor = aliased(Usuario)
         usuarios_titular = aliased(Usuario)
-
         mexico_city_tz = pytz.timezone('America/Mexico_City')
         current_date = datetime.now(mexico_city_tz).date()
         start_of_week = current_date - timedelta(days=current_date.weekday())
@@ -59,10 +58,8 @@ class ReporteService:
             .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
             .join(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
             .filter(
-                and_(
-                    Pago.fecha_pago >= start_of_week,
-                    Pago.fecha_pago <= end_of_week
-                )
+                Pago.fecha_pago >= start_of_week,
+                Pago.fecha_pago <= end_of_week
             )
             .group_by(Grupo.grupo_id)
         ).subquery()
@@ -70,6 +67,7 @@ class ReporteService:
         # Calcular cobranza ideal
         cobranza_ideal_case = Prestamo.monto_prestamo * TipoPrestamo.porcentaje_semanal
 
+        # Construcción del query principal sin el campo de bono
         query = db.session.query(
             Grupo.grupo_id,
             Ruta.ruta_id,
@@ -83,7 +81,7 @@ class ReporteService:
             func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0).label('prestamo_real'),
             (func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0) - 
              func.coalesce(func.sum(Pago.monto_pagado.distinct()), 0)).label('prestamo_papel'),
-            func.count(func.distinct(Prestamo.prestamo_id)).label('numero_de_creditos'),
+            func.count(func.distinct(Prestamo.prestamo_id)).label('numero_de_creditos')
         ).select_from(Grupo)
 
         # Joins
@@ -97,9 +95,11 @@ class ReporteService:
         query = query.outerjoin(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
         query = query.outerjoin(pagos_por_grupo, pagos_por_grupo.c.grupo_id == Grupo.grupo_id)
 
+        # Aplicar filtros si existen
         if filters:
             query = query.filter(*filters)
 
+        # Agrupamiento de datos
         query = query.group_by(
             Grupo.grupo_id,
             Ruta.ruta_id,
@@ -111,16 +111,18 @@ class ReporteService:
             usuarios_titular.apellido_paterno,
             Ruta.nombre_ruta,
             Grupo.nombre_grupo,
-            pagos_por_grupo.c.total_pagos,
+            pagos_por_grupo.c.total_pagos
         )
 
+        # Procesamiento de resultados y preparación del reporte
         results = query.all()
-
         report_data = []
         for row in results:
-            # Obtener el conteo de préstamos activos para este grupo
-            prestamos_activos_count = PrestamoService().count_prestamos_activos(row.grupo_id)
+            # Obtener el bono para cada grupo
+            bono_data = ReporteService.calcular_bono_por_grupo(row.grupo_id)
+            bono = bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
 
+            # Cálculos adicionales
             cobranza_ideal = float(row.cobranza_ideal or 0)
             cobranza_real = float(row.cobranza_real or 0)
             prestamo_real = float(row.prestamo_real or 0)
@@ -128,23 +130,18 @@ class ReporteService:
             numero_de_creditos = row.numero_de_creditos or 0
 
             morosidad_monto = cobranza_ideal - cobranza_real
-            morosidad_porcentaje = None
-            if cobranza_ideal != 0:
-                morosidad_porcentaje = morosidad_monto / cobranza_ideal
-
-            porcentaje_prestamo = None
-            if prestamo_real != 0:
-                porcentaje_prestamo = cobranza_real / prestamo_real
-
+            morosidad_porcentaje = morosidad_monto / cobranza_ideal if cobranza_ideal != 0 else None
+            porcentaje_prestamo = cobranza_real / prestamo_real if prestamo_real != 0 else None
             sobrante = cobranza_real - prestamo_real
 
+            # Agregar datos al reporte
             report_data.append({
                 'grupo_id': row.grupo_id,
-                'gerente': row.gerente if row.gerente else None,
-                'supervisor': row.supervisor if row.supervisor else None,
-                'titular': row.titular if row.titular else None,
-                'ruta': row.ruta if row.ruta else None,
-                'grupo': row.grupo if row.grupo else None,
+                'gerente': row.gerente,
+                'supervisor': row.supervisor,
+                'titular': row.titular,
+                'ruta': row.ruta,
+                'grupo': row.grupo,
                 'cobranza_ideal': cobranza_ideal,
                 'cobranza_real': cobranza_real,
                 'prestamo_papel': prestamo_papel,
@@ -154,93 +151,12 @@ class ReporteService:
                 'morosidad_porcentaje': morosidad_porcentaje,
                 'porcentaje_prestamo': porcentaje_prestamo,
                 'sobrante': sobrante,
-                'numero_de_prestamos': prestamos_activos_count  
+                'numero_de_prestamos': numero_de_creditos,
+                'bono': bono
             })
 
         return report_data
-    
-    @staticmethod
-    def obtener_sobrante_por_grupo(grupo_id):
-        # Subconsulta para obtener los préstamos únicos por grupo
-        prestamos_grupo = (
-            db.session.query(
-                func.sum(Prestamo.monto_prestamo).label('prestamo_real')
-            )
-            .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
-            .filter(ClienteAval.grupo_id == grupo_id)
-        ).scalar()
 
-        # Subconsulta para obtener la suma de los pagos realizados en el grupo
-        pagos_grupo = (
-            db.session.query(
-                func.sum(Pago.monto_pagado).label('cobranza_real')
-            )
-            .join(Prestamo, Pago.prestamo_id == Prestamo.prestamo_id)
-            .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
-            .filter(ClienteAval.grupo_id == grupo_id)
-        ).scalar()
-
-        # Validamos que los valores sean correctos, evitando None
-        cobranza_real = float(pagos_grupo or 0)
-        prestamo_real = float(prestamos_grupo or 0)
-
-        # Calculamos el sobrante
-        sobrante = cobranza_real - prestamo_real
-
-        # Retornamos el reporte final con el sobrante
-        return {
-            'grupo_id': grupo_id,
-            'cobranza_real': cobranza_real,
-            'prestamo_real': prestamo_real,
-            'sobrante': sobrante
-        }
-        
-    @staticmethod
-    def obtener_sobrante_semanal(grupo_id):
-        mexico_city_tz = pytz.timezone('America/Mexico_City')
-        current_date = datetime.now(mexico_city_tz).date()
-        start_of_week = current_date - timedelta(days=current_date.weekday())
-        end_of_week = start_of_week + timedelta(days=6)
-
-        # Subconsulta para obtener la cobranza real durante la semana
-        cobranza_real = (
-            db.session.query(
-                func.sum(Pago.monto_pagado).label('cobranza_real')
-            )
-            .join(Prestamo, Pago.prestamo_id == Prestamo.prestamo_id)
-            .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
-            .filter(
-                ClienteAval.grupo_id == grupo_id,
-                Pago.fecha_pago >= start_of_week,
-                Pago.fecha_pago <= end_of_week
-            )
-        ).scalar()
-
-        # Subconsulta para calcular la cobranza ideal semanal
-        cobranza_ideal = (
-            db.session.query(
-                func.sum(Prestamo.monto_prestamo * TipoPrestamo.porcentaje_semanal).label('cobranza_ideal')
-            )
-            .join(TipoPrestamo, Prestamo.tipo_prestamo_id == TipoPrestamo.tipo_prestamo_id)  # Corrected join
-            .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
-            .filter(ClienteAval.grupo_id == grupo_id)
-        ).scalar()
-
-        # Aseguramos que no sean valores None
-        cobranza_real = float(cobranza_real or 0)
-        cobranza_ideal = float(cobranza_ideal or 0)
-
-        # Calculamos el sobrante semanal
-        sobrante = cobranza_real - cobranza_ideal
-
-        # Retornamos el reporte final con el sobrante semanal
-        return {
-            'grupo_id': grupo_id,
-            'cobranza_real': cobranza_real,
-            'cobranza_ideal': cobranza_ideal,
-            'sobrante': sobrante,
-            'semana': f"{start_of_week} to {end_of_week}"
-        }
 
     @staticmethod
     def obtener_sobrante_total_usuario_por_prestamo(user_id):
