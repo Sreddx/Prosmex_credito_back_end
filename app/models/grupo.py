@@ -13,8 +13,8 @@ class Grupo(db.Model):
     usuarioTitular = db.relationship('Usuario', backref=db.backref('grupos', lazy=True))
     clientes_avales = db.relationship('ClienteAval', backref='grupo', lazy=True)
 
-    # Relación uno a muchos con Corte
-    cortes = db.relationship('Corte', backref='grupo', lazy=True)
+    # # Relación uno a muchos con Corte
+    # cortes = db.relationship('Corte', backref='grupo', lazy=True)
 
     def validar_titular(self):
         if self.usuario_id_titular:

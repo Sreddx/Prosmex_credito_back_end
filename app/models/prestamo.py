@@ -1,6 +1,7 @@
 from sqlalchemy.orm import validates
 from sqlalchemy import CheckConstraint, UniqueConstraint
 from .cliente_aval import ClienteAval
+from .falta import Falta
 from ..database import db
 from datetime import datetime, timedelta
 from app.constants import TIMEZONE
@@ -10,6 +11,7 @@ class Prestamo(db.Model):
     __tablename__ = 'prestamos'
     prestamo_id = db.Column(db.Integer, primary_key=True)
     monto_prestamo = db.Column(db.Numeric, nullable=False)
+    monto_utilidad = db.Column(db.Numeric, nullable=False)
     fecha_inicio = db.Column(db.DateTime, default=lambda: datetime.now(TIMEZONE), nullable=False) #Fecha para contar semanas de prestamos es a partir del lunes de la semana de que se pidio el prestamo
     cliente_id = db.Column(db.Integer, db.ForeignKey('clientes_avales.cliente_id'), nullable=False)
     aval_id = db.Column(db.Integer, db.ForeignKey('clientes_avales.cliente_id'), nullable=True)
@@ -56,7 +58,7 @@ class Prestamo(db.Model):
     def verificar_completado(self):
         """Calcula si el préstamo está completo sumando los pagos."""
         monto_pagado_total = sum([float(pago.monto_pagado) for pago in self.pagos])
-        if monto_pagado_total >= float(self.monto_prestamo):
+        if monto_pagado_total >= float(self.monto_utilidad):
             self.completado = True
         else:
             self.completado = False
@@ -98,6 +100,7 @@ class Prestamo(db.Model):
             'cliente_id': self.cliente_id,
             'fecha_inicio': self.fecha_inicio,
             'monto_prestamo': self.monto_prestamo,
+            'monto_utilidad': self.monto_utilidad,
             'tipo_prestamo_id': self.tipo_prestamo_id,
             'aval_id': self.aval_id,
             'completado': self.completado
@@ -135,3 +138,5 @@ class Prestamo(db.Model):
             db.session.commit()
             return False  # No se cubrió la cobranza ideal
         return True  # Se cumplió la cobranza ideal
+    
+    

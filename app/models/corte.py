@@ -7,7 +7,7 @@ class Corte(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
-    grupo_id = db.Column(db.Integer, db.ForeignKey('grupos.grupo_id'), nullable=False)
+    # grupo_id = db.Column(db.Integer, db.ForeignKey('grupos.grupo_id'), nullable=False)
     fecha_inicio = db.Column(db.DateTime, default=lambda: datetime.now(TIMEZONE), nullable=False)
     corte_total = db.Column(db.Numeric, nullable=False)
     total_gastos = db.Column(db.Numeric, nullable=False)

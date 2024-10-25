@@ -9,14 +9,13 @@ class CorteService:
     def __init__(self, corte_id=None):
         self.corte_id = corte_id
 
-    def create_corte(self, data, usuario_id, grupo_id):
+    def create_corte(self, data, usuario_id):
         """
         Crea un nuevo corte, vinculando un usuario y un grupo.
         """
         try:
             new_corte = Corte(
                 usuario_id=usuario_id,  # Relación con el Usuario
-                grupo_id=grupo_id,  # Relación con el Grupo
                 fecha_inicio=datetime.now(TIMEZONE),
                 corte_total=data['corte_total'],
                 total_gastos=data['total_gastos'],

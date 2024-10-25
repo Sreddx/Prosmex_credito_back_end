@@ -17,14 +17,10 @@ def create_corte():
         # Obtener el usuario desde el JWT
         usuario = UsuarioService.get_user_from_jwt()
         
-        # Verificar que el grupo_id esté en los datos
-        grupo_id = data.get('grupo_id')
-        if not grupo_id:
-            return jsonify({"error": "Grupo ID es requerido"}), 400
 
         # Crear el corte con el usuario autenticado y el grupo relacionado
         corte_service = CorteService()
-        new_corte = corte_service.create_corte(data, usuario.id, grupo_id)
+        new_corte = corte_service.create_corte(data, usuario.id)
         return jsonify(new_corte.serialize()), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -85,3 +81,7 @@ def list_cortes():
         return jsonify(cortes), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+
+
+# ENDPOINTS PARA PANTALLA DE CORTE
+# 

@@ -238,3 +238,44 @@ class ReporteService:
             'sobrante': sobrante,
             'semana': f"{start_of_week} to {end_of_week}"
         }
+
+    @staticmethod
+    def obtener_sobrante_total_usuario_por_prestamo(user_id):
+        # Filtrar grupos por rol del usuario
+        usuario = UsuarioService.get_user_by_id(user_id)
+        user_role_id = usuario.rol_id
+        filters = []
+
+        if user_role_id in [5, 6]:
+            pass
+        elif user_role_id == 4:
+            filters.append(Ruta.usuario_id_gerente == user_id)
+        elif user_role_id == 3:
+            filters.append(Ruta.usuario_id_supervisor == user_id)
+        elif user_role_id == 2:
+            filters.append(Grupo.usuario_id_titular == user_id)
+        
+        # Subconsulta para calcular el sobrante por préstamo en cada grupo del usuario
+        sobrante_por_prestamo = (
+            db.session.query(
+                Prestamo.prestamo_id,
+                (func.coalesce(func.sum(Pago.monto_pagado), 0) - Prestamo.monto_prestamo).label('sobrante')
+            )
+            .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .join(Grupo, ClienteAval.grupo_id == Grupo.grupo_id)
+            .outerjoin(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
+            .filter(*filters)
+            .group_by(Prestamo.prestamo_id)
+        ).subquery()
+
+        # Consulta para sumar el sobrante total de todos los préstamos del usuario
+        total_sobrante = (
+            db.session.query(func.coalesce(func.sum(sobrante_por_prestamo.c.sobrante), 0).label('total_sobrante'))
+            .scalar()
+        )
+
+        # Devuelve el total de sobrante por usuario
+        return {
+            'user_id': user_id,
+            'total_sobrante': total_sobrante
+        }

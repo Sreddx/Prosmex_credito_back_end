@@ -4,6 +4,8 @@ from app.services import usuario_service
 from app import db
 from flask import current_app as app
 from sqlalchemy.exc import SQLAlchemyError
+from app.constants import TIMEZONE
+from datetime import datetime
 
 class PrestamoService:
     def __init__(self, prestamo_id=None):
@@ -19,15 +21,34 @@ class PrestamoService:
         else:
             return False
             
+    @staticmethod
+    def calcular_utilidad(monto_prestamo, numero_semanas, porcentaje_semanal):
+        return monto_prestamo * (numero_semanas * porcentaje_semanal)
+
+    # Método para crear un nuevo préstamo
     def create_prestamo(self, data, user):
         monto_prestamo = data['monto_prestamo']
         if self.__check_override_monto_prestamo(monto_prestamo, user):
             try:
-                
+                fecha_inicio = data.get('fecha_inicio', datetime.now(TIMEZONE))
+
+                # Obtén el tipo de préstamo para calcular el porcentaje semanal y el número de semanas
+                tipo_prestamo = TipoPrestamo.query.get(data['tipo_prestamo_id'])
+                if not tipo_prestamo:
+                    raise ValueError("Tipo de préstamo no encontrado.")
+
+                numero_semanas = tipo_prestamo.numero_semanas  
+                porcentaje_semanal = tipo_prestamo.porcentaje_semanal
+
+                # Calcula la utilidad usando el método estático
+                monto_utilidad = self.calcular_utilidad(monto_prestamo, numero_semanas, porcentaje_semanal)
+
+                # Crea el nuevo préstamo con el monto de utilidad calculado
                 new_prestamo = Prestamo(
                     cliente_id=data['cliente_id'],
-                    fecha_inicio=data['fecha_inicio'],
-                    monto_prestamo=data['monto_prestamo'],
+                    fecha_inicio=fecha_inicio,
+                    monto_prestamo=monto_prestamo,
+                    monto_utilidad=monto_utilidad,
                     tipo_prestamo_id=data['tipo_prestamo_id'],
                     aval_id=data['aval_id']
                 )
@@ -39,7 +60,7 @@ class PrestamoService:
                 app.logger.error(f"Error creando préstamo: {str(e)}")
                 raise ValueError("No se pudo crear el préstamo.")
         else:
-            raise ValueError("No tienes permisos para realizar agregar un prestamo mayor a 5000.")
+            raise ValueError("No tienes permisos para agregar un préstamo mayor a 5000.")
                 
 
     def get_prestamo(self):
@@ -99,6 +120,7 @@ class PrestamoService:
                     'cliente_nombre': prestamo.titular.nombre + " " + prestamo.titular.apellido_paterno + " " + prestamo.titular.apellido_materno,  
                     'fecha_inicio': prestamo.fecha_inicio,
                     'monto_prestamo': prestamo.monto_prestamo,
+                    'monto_utilidad': prestamo.monto_utilidad,
                     'tipo_prestamo_id': prestamo.tipo_prestamo_id,
                     'tipo_prestamo_nombre': prestamo.tipo_prestamo.nombre,  
                     'aval_id': prestamo.aval.cliente_id,

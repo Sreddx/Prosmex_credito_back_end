@@ -127,7 +127,7 @@ class ClienteAvalService:
     
     def list_clientes_registro(self):
         try:
-            clientes = ClienteAval.query.filter_by(es_aval=False).all()
+            clientes = ClienteAval.query.all()
             clientes_list = []
             for cliente in clientes:
                 clientes_list.append({

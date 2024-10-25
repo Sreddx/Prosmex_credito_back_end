@@ -63,7 +63,6 @@ def delete_prestamo(prestamo_id):
 @prestamo_blueprint.route('/', methods=['GET'])
 def list_prestamos():
     def func():
-        print("entro")
         prestamo_service = PrestamoService()
         prestamos = prestamo_service.list_prestamos()
         return create_response(prestamos, 200)
@@ -79,3 +78,19 @@ def list_tipos_prestamo():
 
     return handle_exceptions(func)
 
+@prestamo_blueprint.route('/<int:prestamo_id>/cobranza-ideal', methods=['GET'])
+def get_cobranza_ideal(prestamo_id):
+    """
+    Endpoint para obtener la cobranza ideal semanal de un préstamo por su ID.
+    """
+    def func():
+        prestamo_service = PrestamoService(prestamo_id)
+        prestamo = prestamo_service.get_prestamo()
+        if prestamo:
+            # Calcular la cobranza ideal
+            cobranza_ideal = prestamo.calcular_cobranza_ideal()
+            return create_response({'prestamo_id': prestamo.prestamo_id, 'cobranza_ideal': cobranza_ideal}, 200)
+        else:
+            return make_error_response('Prestamo not found', 404)
+
+    return handle_exceptions(func)
