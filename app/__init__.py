@@ -15,7 +15,7 @@ def iniciar_cronjobs(app):
     """
     Configura el cronjob que ejecuta la función de verificar_pagos_semanal cada domingo a las 00:00 horas.
     """
-    scheduler = BackgroundScheduler(timezone=aoo.config['TIMEZONE'])
+    scheduler = BackgroundScheduler(timezone=app.config['TIMEZONE'])
 
     # Configurar el cronjob para los domingos a las 00:00
     trigger = CronTrigger(day_of_week='sun', hour=0, minute=0)

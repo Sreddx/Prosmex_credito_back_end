@@ -1,13 +1,17 @@
 import os
+import pytz
+
+# Definir la zona horaria de Ciudad de México
+TIMEZONE = pytz.timezone('America/Mexico_City')
 
 class Config:
-    SQLALCHEMY_DATABASE_URI = 'postgresql://username:password@localhost/prosmex_db'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Establece la clave secreta y la clave JWT
     SECRET_KEY = os.environ.get('SECRET_KEY', 'prosmex_luis_sebas')
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'prosmex_luis_sebas')
-
+    TIMEZONE =  pytz.timezone('America/Mexico_City')
 
 class localConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
@@ -19,7 +23,7 @@ class localConfig(Config):
 
 
 class QAConfig(Config):
-    SQLALCHEMY_DATABASE_URI = 'postgresql://username:password@localhost/prosmex_db'
+    SQLALCHEMY_DATABASE_URI = Config.SQLALCHEMY_DATABASE_URI
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Puedes sobrescribir las claves si es necesario en el entorno de QA
