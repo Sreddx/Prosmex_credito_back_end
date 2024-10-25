@@ -5,4 +5,8 @@ from .prestamo_service import PrestamoService
 from .ruta_service import RutaService
 from .grupo_service import GrupoService
 from .pago_service import PagoService
+from .bono_service import BonoService
+from .corte_service import CorteService
+from .falta_service import FaltaService
 from app.services.reporte_service import ReporteService
+from .tasks import verificar_pagos_semanal

@@ -1,5 +1,47 @@
 from app.models import Accion, Permiso, Rol, Grupo, Ruta, TipoPrestamo, Usuario
+from app.services import bono_service
 from app import db
+
+def populate_bonos():
+    bonos = [
+        {
+            'monto': 150,
+            'entrega_min': 5000,
+            'entrega_max': 5999,
+            'fallas': 0
+        },
+        {
+            'monto': 200,
+            'entrega_min': 6000,
+            'entrega_max': 7499,
+            'fallas': 0
+        },
+        {
+            'monto': 250,
+            'entrega_min': 7500,
+            'entrega_max': 8499,
+            'fallas': 1
+        },
+        {
+            'monto': 300,
+            'entrega_min': 8500,
+            'entrega_max': 9999,
+            'fallas': 2
+        },
+        {
+            'monto': 400,
+            'entrega_min': 10000,
+            'entrega_max': 13500,
+            'fallas': 2
+        }
+    ]
+    try:
+        for bono_data in bonos:
+            bono_service.create_bono(bono_data)
+        return True
+    except ValueError as e:
+        raise ValueError(f"Error creando bonos: {str(e)}")
+
 
 def populate_data():
     # Check if initial data exists
@@ -171,3 +213,5 @@ def populate_data():
         )
         db.session.add(new_tipo)
     db.session.commit()
+    
+    populate_bonos()

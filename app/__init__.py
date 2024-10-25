@@ -5,7 +5,24 @@ from .extensions import bcrypt, jwt
 from flask_cors import CORS
 from config import localConfig
 from flask_migrate import Migrate, migrate as run_migration, upgrade as apply_upgrade
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from app.services import verificar_pagos_semanal
 import os
+
+
+def iniciar_cronjobs(app):
+    """
+    Configura el cronjob que ejecuta la función de verificar_pagos_semanal cada domingo a las 00:00 horas.
+    """
+    scheduler = BackgroundScheduler(timezone=aoo.config['TIMEZONE'])
+
+    # Configurar el cronjob para los domingos a las 00:00
+    trigger = CronTrigger(day_of_week='sun', hour=0, minute=0)
+
+    # Agregar el trabajo al scheduler
+    scheduler.add_job(func=verificar_pagos_semanal, trigger=trigger)
+    scheduler.start()
 
 def create_app():
     app = Flask(__name__)
@@ -70,6 +87,10 @@ def create_app():
     app.register_blueprint(pagos_blueprint)
     app.register_blueprint(reporte_blueprint)
 
+    # Tareas programadas
+    iniciar_cronjobs(app)
+    
+    
     @app.teardown_appcontext
     def shutdown_session(exception=None):
         if 'session' in locals():

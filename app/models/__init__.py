@@ -8,3 +8,6 @@ from .cliente_aval import ClienteAval
 from .tipo_prestamo import TipoPrestamo
 from .grupo import Grupo
 from .ruta import Ruta
+from .bono import Bono
+from .corte import Corte
+from .falta import Falta
