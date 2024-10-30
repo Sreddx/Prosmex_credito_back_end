@@ -33,6 +33,11 @@ class PagoService:
 
             # Verificar si el préstamo se ha completado
             prestamo.verificar_completado()
+            
+            if prestamo.verificar_pago_cubre_cobranza_ideal(new_pago):
+                print("Pago cubre cobranza ideal")
+            else:
+                print(f'Falta registrada para el préstamo {prestamo.prestamo_id}')
 
             return new_pago
         except (ValueError, SQLAlchemyError) as e:

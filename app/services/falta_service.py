@@ -11,7 +11,8 @@ class FaltaService:
         try:
             new_falta = Falta(
                 fecha=data['fecha'],
-                prestamo_id=data['prestamo_id']
+                prestamo_id=data['prestamo_id'],
+                monto_abonado=data['monto_abonado']
             )
             db.session.add(new_falta)
             db.session.commit()

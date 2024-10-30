@@ -8,11 +8,13 @@ class Falta(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     fecha = db.Column(db.DateTime, default=lambda: datetime.now(TIMEZONE), nullable=False)
     prestamo_id = db.Column(db.Integer, db.ForeignKey('prestamos.prestamo_id'), nullable=False)
+    monto_abonado= db.Column(db.Numeric, nullable=False)
     
     
     def serialize(self):
         return {
             'id': self.id,
             'fecha': self.fecha,
-            'prestamo_id': self.prestamo_id
+            'prestamo_id': self.prestamo_id,
+            'monto_abonado': self.monto_abonado
         }

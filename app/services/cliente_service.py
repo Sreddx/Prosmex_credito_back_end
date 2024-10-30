@@ -42,7 +42,6 @@ class ClienteAvalService:
                 estado_civil=data['estado_civil'],
                 num_hijos=data['num_hijos'],
                 propiedad=data['propiedad'],
-                es_aval=data.get('es_aval', False),
                 grupo_id=data['grupo_id']
             )
             db.session.add(new_cliente)

@@ -13,7 +13,7 @@ class ClienteAval(db.Model):
     estado_civil = db.Column(db.Enum('casado', 'divorciado', 'viudo', 'soltero', name='estado_civil_types'))
     num_hijos = db.Column(db.Integer)
     propiedad = db.Column(db.Enum('casa_propia', 'rentada', 'prestada', name='tipo_propiedad'))
-    es_aval = db.Column(db.Boolean)
+    es_aval = db.Column(db.Boolean, default=True)
     grupo_id = db.Column(db.Integer, db.ForeignKey('grupos.grupo_id'))
     
     

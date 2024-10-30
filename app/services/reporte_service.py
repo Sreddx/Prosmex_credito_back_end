@@ -26,7 +26,7 @@ class ReporteService:
         # Configuración inicial y obtención del usuario
         user = UsuarioService.get_user_from_jwt()
         user_role_id = user.rol_id
-        
+
         if user_role_id == 1:
             return []
 
@@ -129,9 +129,10 @@ class ReporteService:
             prestamo_papel = float(row.prestamo_papel or 0)
             numero_de_creditos = row.numero_de_creditos or 0
 
-            morosidad_monto = cobranza_ideal - cobranza_real
+            # Cálculo de la morosidad basado en la diferencia entre cobranza ideal y pagos reales
+            morosidad_monto = max(cobranza_ideal - cobranza_real, 0)
             morosidad_porcentaje = morosidad_monto / cobranza_ideal if cobranza_ideal != 0 else None
-            porcentaje_prestamo = prestamo_papel / cobranza_real  if cobranza_real != 0 else None
+            porcentaje_prestamo = prestamo_papel / cobranza_real if cobranza_real != 0 else None
             sobrante = cobranza_real - prestamo_papel - bono
 
             # Agregar datos al reporte
@@ -156,6 +157,7 @@ class ReporteService:
             })
 
         return report_data
+
 
 
     @staticmethod

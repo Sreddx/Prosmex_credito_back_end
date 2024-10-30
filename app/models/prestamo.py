@@ -93,7 +93,7 @@ class Prestamo(db.Model):
             raise ValueError(f"El aval con ID {aval_id} ya está asignado a otro préstamo en el grupo del cliente.")
         
         return aval_id
-
+    
     def serialize(self):
         return {
             'prestamo_id': self.prestamo_id,
@@ -139,4 +139,18 @@ class Prestamo(db.Model):
             return False  # No se cubrió la cobranza ideal
         return True  # Se cumplió la cobranza ideal
     
+    
+    def verificar_pago_cubre_cobranza_ideal(self, pago):
+        cobranza_ideal = self.calcular_cobranza_ideal()
+        try:
+            if pago.monto_pagado < cobranza_ideal:
+                falta = Falta(fecha=datetime.now(TIMEZONE).date(), prestamo_id=self.prestamo_id, monto_abonado=pago.monto_pagado)
+                db.session.add(falta)
+                db.session.commit()
+                return False
+            return True
+        except Exception as e:
+            db.session.rollback()
+            raise ValueError(f"No se pudo verificar el pago: {str(e)}")
+        
     
