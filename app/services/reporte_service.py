@@ -131,8 +131,8 @@ class ReporteService:
 
             morosidad_monto = cobranza_ideal - cobranza_real
             morosidad_porcentaje = morosidad_monto / cobranza_ideal if cobranza_ideal != 0 else None
-            porcentaje_prestamo = cobranza_real / prestamo_real if prestamo_real != 0 else None
-            sobrante = cobranza_real - prestamo_real
+            porcentaje_prestamo = prestamo_papel / cobranza_real  if cobranza_real != 0 else None
+            sobrante = cobranza_real - prestamo_papel - bono
 
             # Agregar datos al reporte
             report_data.append({
