@@ -55,27 +55,59 @@ def delete_cliente(cliente_id):
 def list_clientes():
     def func():
         cliente_service = ClienteAvalService()
-        clientes = cliente_service.list_clientes()
-        return create_response([cliente.serialize() for cliente in clientes], 200)
+        
+        # Obtén los parámetros de paginación de la solicitud
+        page = request.args.get('page', default=1, type=int)
+        per_page = request.args.get('per_page', default=10, type=int)
+
+        # Llama al servicio con los parámetros de paginación
+        clientes, total_pages = cliente_service.list_clientes(page, per_page)
+        
+        return create_response({
+            'clientes': [cliente.serialize() for cliente in clientes],
+            'page': page,
+            'per_page': per_page,
+            'total_pages': total_pages
+        }, 200)
 
     return handle_exceptions(func)
+
 
 # List avales para prestamo
 @cliente_blueprint.route('/avales', methods=['GET'])
 def list_avales():
     def func():
+        page = request.args.get('page', default=1, type=int)
+        per_page = request.args.get('per_page', default=10, type=int)
+
         cliente_service = ClienteAvalService()
-        avales = cliente_service.list_avales()
-        return create_response(avales, 200)
+        avales, total_pages = cliente_service.list_avales(page, per_page)
+        
+        return create_response({
+            'avales': avales,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': total_pages
+        }, 200)
 
     return handle_exceptions(func)
+
 # List clientes para prestamo
 @cliente_blueprint.route('/clientes-registro-prestamo', methods=['GET'])
 def list_clientes_registro():
     def func():
+        page = request.args.get('page', default=1, type=int)
+        per_page = request.args.get('per_page', default=10, type=int)
+
         cliente_service = ClienteAvalService()
-        clientes = cliente_service.list_clientes_registro()
-        return create_response(clientes, 200)
+        clientes, total_pages = cliente_service.list_clientes_registro(page, per_page)
+        
+        return create_response({
+            'clientes': clientes,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': total_pages
+        }, 200)
 
     return handle_exceptions(func)
 

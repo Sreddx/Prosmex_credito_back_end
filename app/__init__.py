@@ -91,8 +91,7 @@ def create_app():
     app.register_blueprint(reporte_blueprint)
     app.register_blueprint(cortes_blueprint)
 
-    # Tareas programadas
-    iniciar_cronjobs(app)
+    
     
     
     @app.teardown_appcontext

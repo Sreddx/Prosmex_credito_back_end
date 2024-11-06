@@ -1,3 +1,4 @@
+from math import ceil
 from app.models import ClienteAval
 from app import db
 from .service_helpers import validate_key
@@ -117,39 +118,47 @@ class ClienteAvalService:
             app.logger.error(f"Error eliminando cliente: {str(e)}")
             raise ValueError("No se pudo eliminar el cliente.")
 
-    def list_clientes(self):
+    def list_clientes(self, page=1, per_page=10):
         try:
-            return ClienteAval.query.all()
+            # Obtén la lista de clientes con paginación
+            clientes_query = ClienteAval.query.paginate(page=page, per_page=per_page, error_out=False)
+            
+            # Calcula el número total de páginas
+            total_pages = ceil(clientes_query.total / per_page)
+            
+            return clientes_query.items, total_pages
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando clientes: {str(e)}")
             raise ValueError("No se pudo obtener la lista de clientes.")
     
-    def list_clientes_registro(self):
+    def list_clientes_registro(self, page=1, per_page=10):
         try:
-            clientes = ClienteAval.query.all()
+            clientes_query = ClienteAval.query.paginate(page=page, per_page=per_page, error_out=False)
             clientes_list = []
-            for cliente in clientes:
+            for cliente in clientes_query.items:
                 clientes_list.append({
                     'id': cliente.cliente_id,
-                    'nombre': cliente.nombre + ' ' + cliente.apellido_paterno + ' ' + cliente.apellido_materno,
+                    'nombre': f"{cliente.nombre} {cliente.apellido_paterno} {cliente.apellido_materno}",
                     'grupo_id': cliente.grupo_id
                 })
-            return clientes_list
+            total_pages = ceil(clientes_query.total / per_page)
+            return clientes_list, total_pages
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando clientes: {str(e)}")
             raise ValueError("No se pudo obtener la lista de clientes.")
-    
-    def list_avales(self):
+
+    def list_avales(self, page=1, per_page=10):
         try:
-            clientes_avales = ClienteAval.query.filter_by(es_aval=True).all()
+            clientes_avales_query = ClienteAval.query.filter_by(es_aval=True).paginate(page=page, per_page=per_page, error_out=False)
             avales = []
-            for aval in clientes_avales:
+            for aval in clientes_avales_query.items:
                 avales.append({
                     'id': aval.cliente_id,
-                    'nombre': aval.nombre + ' ' + aval.apellido_paterno + ' ' + aval.apellido_materno,
+                    'nombre': f"{aval.nombre} {aval.apellido_paterno} {aval.apellido_materno}",
                     'grupo_id': aval.grupo_id
                 })
-            return avales
+            total_pages = ceil(clientes_avales_query.total / per_page)
+            return avales, total_pages
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando avales: {str(e)}")
             raise ValueError("No se pudo obtener la lista de avales.")

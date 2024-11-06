@@ -139,9 +139,9 @@ class PagoService:
                 raise ValueError(f"No se encontró el grupo con ID: {grupo_id}")
 
             # Obtener los titulares (clientes que no son avales) en el grupo
-            titulares_en_grupo = ClienteAval.query.filter_by(grupo_id=grupo_id, es_aval=False).all()
+            titulares_en_grupo = ClienteAval.query.filter_by(grupo_id=grupo_id).all()
             id_titulares = [titular.cliente_id for titular in titulares_en_grupo]
-
+            
             # Obtener los préstamos de esos titulares con relaciones cargadas
             prestamos_cliente = Prestamo.query.options(
                 joinedload(Prestamo.titular),
