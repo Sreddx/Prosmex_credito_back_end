@@ -109,24 +109,35 @@ class PrestamoService:
             app.logger.error(f"Error eliminando préstamo: {str(e)}")
             raise ValueError("No se pudo eliminar el préstamo.")
 
-    def list_prestamos(self):
+    def list_prestamos(self, page=1, per_page=10):
         try:
-            lista_obj_prestamos = Prestamo.query.all()
+            pagination = Prestamo.query.paginate(page=page, per_page=per_page, error_out=False)
+            lista_obj_prestamos = pagination.items
+            total_pages = pagination.pages
+            total_items = pagination.total
+
             prestamos = []
             for prestamo in lista_obj_prestamos:
                 prestamos.append({
                     'prestamo_id': prestamo.prestamo_id,
                     'cliente_id': prestamo.titular.cliente_id,
-                    'cliente_nombre': prestamo.titular.nombre + " " + prestamo.titular.apellido_paterno + " " + prestamo.titular.apellido_materno,  
+                    'cliente_nombre': f"{prestamo.titular.nombre} {prestamo.titular.apellido_paterno} {prestamo.titular.apellido_materno}",
                     'fecha_inicio': prestamo.fecha_inicio,
                     'monto_prestamo': prestamo.monto_prestamo,
                     'monto_utilidad': prestamo.monto_utilidad,
                     'tipo_prestamo_id': prestamo.tipo_prestamo_id,
-                    'tipo_prestamo_nombre': prestamo.tipo_prestamo.nombre,  
+                    'tipo_prestamo_nombre': prestamo.tipo_prestamo.nombre,
                     'aval_id': prestamo.aval.cliente_id,
-                    'aval_nombre': prestamo.aval.nombre + " " + prestamo.aval.apellido_paterno + " " + prestamo.aval.apellido_materno 
+                    'aval_nombre': f"{prestamo.aval.nombre} {prestamo.aval.apellido_paterno} {prestamo.aval.apellido_materno}"
                 })
-            return prestamos
+
+            return {
+                'prestamos': prestamos,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': total_pages,
+                'total_items': total_items
+            }
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando préstamos: {str(e)}")
             raise ValueError("No se pudo obtener la lista de préstamos.")

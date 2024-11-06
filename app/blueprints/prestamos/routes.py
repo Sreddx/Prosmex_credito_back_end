@@ -63,11 +63,15 @@ def delete_prestamo(prestamo_id):
 @prestamo_blueprint.route('/', methods=['GET'])
 def list_prestamos():
     def func():
+        page = request.args.get('page', default=1, type=int)
+        per_page = request.args.get('per_page', default=10, type=int)
+        
         prestamo_service = PrestamoService()
-        prestamos = prestamo_service.list_prestamos()
+        prestamos = prestamo_service.list_prestamos(page=page, per_page=per_page)
         return create_response(prestamos, 200)
 
     return handle_exceptions(func)
+
 
 @prestamo_blueprint.route('/tipos', methods=['GET'])
 def list_tipos_prestamo():
