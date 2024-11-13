@@ -1,7 +1,8 @@
-from flask import Blueprint
+from flask import Blueprint, request
 from app.services.reporte_service import ReporteService
 from app.blueprints.helpers import create_response, handle_exceptions
 from flask_jwt_extended import get_jwt_identity, jwt_required
+
 
 reporte_blueprint = Blueprint('reporte', __name__, url_prefix='/reporte')
 
@@ -9,10 +10,37 @@ reporte_blueprint = Blueprint('reporte', __name__, url_prefix='/reporte')
 @jwt_required()
 def obtener_reporte_general():
     def func():
-        reporte = ReporteService.obtener_reporte()
-        print(reporte)
-        return create_response({'reporte': reporte}, 200)
+        # Obtener los parámetros de paginación de la solicitud
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        
+        # Llamar al método `obtener_reporte` con los argumentos de paginación
+        reporte = ReporteService.obtener_reporte(page=page, per_page=per_page)
+
+        # Preparar la respuesta para el reporte general sin totales
+        response_data = {
+            'reporte': reporte['reporte'],
+            'page': reporte['page'],
+            'per_page': reporte['per_page'],
+            'total_items': reporte['total_items'],
+        }
+
+        return create_response(response_data, 200)
+
     return handle_exceptions(func)
+
+
+@reporte_blueprint.route('/general/totales', methods=['GET'])
+@jwt_required()
+def obtener_totales():
+    def func():
+        # Llamar al método `obtener_totales` para calcular los valores totales
+        totales = ReporteService.obtener_totales()
+        return create_response({'totales': totales}, 200)
+
+    return handle_exceptions(func)
+
+
 
 @reporte_blueprint.route('/sobrante-grupo/<int:grupo_id>', methods=['GET'])
 def obtener_sobrante_grupo(grupo_id):

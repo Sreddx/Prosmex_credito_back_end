@@ -22,7 +22,7 @@ from app.services import PrestamoService
 
 class ReporteService:
     @staticmethod
-    def obtener_reporte():
+    def obtener_reporte(page=1, per_page=10):
         # Configuración inicial y obtención del usuario
         user = UsuarioService.get_user_from_jwt()
         user_role_id = user.rol_id
@@ -80,7 +80,7 @@ class ReporteService:
             func.coalesce(pagos_por_grupo.c.total_pagos, 0).label('cobranza_real'),
             func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0).label('prestamo_real'),
             (func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0) - 
-             func.coalesce(func.sum(Pago.monto_pagado.distinct()), 0)).label('prestamo_papel'),
+            func.coalesce(func.sum(Pago.monto_pagado.distinct()), 0)).label('prestamo_papel'),
             func.count(func.distinct(Prestamo.prestamo_id)).label('numero_de_creditos')
         ).select_from(Grupo)
 
@@ -114,8 +114,14 @@ class ReporteService:
             pagos_por_grupo.c.total_pagos
         )
 
-        # Procesamiento de resultados y preparación del reporte
-        results = query.all()
+        # Obtener el total de resultados antes de la paginación
+        total_items = query.count()
+
+        # Agregar paginación
+        paginated_query = query.limit(per_page).offset((page - 1) * per_page)
+
+        # Procesar los resultados de la consulta paginada
+        results = paginated_query.all()
         report_data = []
         for row in results:
             # Obtener el bono para cada grupo
@@ -156,7 +162,91 @@ class ReporteService:
                 'bono': bono
             })
 
-        return report_data
+        return {
+            'reporte': report_data,
+            'page': page,
+            'per_page': per_page,
+            'total_items': total_items
+        }
+
+
+    @staticmethod
+    def obtener_totales():
+        # Configuración inicial y obtención del usuario
+        user = UsuarioService.get_user_from_jwt()
+        user_role_id = user.rol_id
+
+        # Definir filtros según rol de usuario
+        filters = []
+        if user_role_id == 4:
+            filters.append(Ruta.usuario_id_gerente == user.id)
+        elif user_role_id == 3:
+            filters.append(Ruta.usuario_id_supervisor == user.id)
+        elif user_role_id == 2:
+            filters.append(Grupo.usuario_id_titular == user.id)
+
+        # Definir el rango de fechas de la semana actual
+        mexico_city_tz = pytz.timezone('America/Mexico_City')
+        current_date = datetime.now(mexico_city_tz).date()
+        start_of_week = current_date - timedelta(days=current_date.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+
+        # Subconsulta para pagos por grupo
+        pagos_por_grupo = (
+            db.session.query(
+                Grupo.grupo_id.label('grupo_id'),
+                func.sum(Pago.monto_pagado).label('total_pagos')
+            )
+            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
+            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .join(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
+            .filter(
+                Pago.fecha_pago >= start_of_week,
+                Pago.fecha_pago <= end_of_week
+            )
+            .group_by(Grupo.grupo_id)
+        ).subquery()
+
+        # Calcular cobranza ideal
+        cobranza_ideal_case = Prestamo.monto_prestamo * TipoPrestamo.porcentaje_semanal
+
+        # Construcción del query de totales
+        query_totales = db.session.query(
+            func.sum(func.coalesce(cobranza_ideal_case, 0)).label('total_cobranza_ideal'),
+            func.sum(func.coalesce(pagos_por_grupo.c.total_pagos, 0)).label('total_cobranza_real'),
+            func.sum(func.coalesce(Prestamo.monto_prestamo, 0)).label('total_prestamo_real'),
+            func.sum(
+                func.coalesce(Prestamo.monto_prestamo, 0) -
+                func.coalesce(Pago.monto_pagado, 0)
+            ).label('total_prestamo_papel'),
+            func.count(func.distinct(Prestamo.prestamo_id)).label('total_numero_de_creditos')
+        ).select_from(Grupo)
+
+        # Joins necesarios para el cálculo
+        query_totales = query_totales.outerjoin(Ruta, Grupo.ruta_id == Ruta.ruta_id)
+        query_totales = query_totales.outerjoin(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
+        query_totales = query_totales.outerjoin(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
+        query_totales = query_totales.outerjoin(TipoPrestamo, Prestamo.tipo_prestamo_id == TipoPrestamo.tipo_prestamo_id)
+        query_totales = query_totales.outerjoin(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
+        query_totales = query_totales.outerjoin(pagos_por_grupo, pagos_por_grupo.c.grupo_id == Grupo.grupo_id)
+
+        # Aplicar filtros si existen
+        if filters:
+            query_totales = query_totales.filter(*filters)
+
+        # Ejecutar la consulta y obtener los resultados
+        result_totales = query_totales.one()
+
+        # Construir el diccionario de respuesta
+        return {
+            'total_cobranza_ideal': result_totales.total_cobranza_ideal or 0,
+            'total_cobranza_real': result_totales.total_cobranza_real or 0,
+            'total_prestamo_real': result_totales.total_prestamo_real or 0,
+            'total_prestamo_papel': result_totales.total_prestamo_papel or 0,
+            'total_numero_de_creditos': result_totales.total_numero_de_creditos or 0,
+            'total_bono': 0  # Asigna un valor predeterminado si el bono no se puede calcular en la misma consulta
+        }
+
 
 
 
