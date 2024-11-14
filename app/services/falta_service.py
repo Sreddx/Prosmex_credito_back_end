@@ -72,3 +72,13 @@ class FaltaService:
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando faltas: {str(e)}")
             raise ValueError("No se pudo obtener la lista de faltas.")
+
+    @staticmethod
+    def get_faltas_by_prestamo_id(prestamo_id):
+        """Obtiene todas las faltas asociadas a un préstamo específico."""
+        try:
+            faltas = Falta.query.filter_by(prestamo_id=prestamo_id).all()
+            return [falta.serialize() for falta in faltas]
+        except SQLAlchemyError as e:
+            app.logger.error(f"Error obteniendo faltas: {str(e)}")
+            raise ValueError("No se pudo obtener las faltas del préstamo.")

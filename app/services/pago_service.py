@@ -5,7 +5,8 @@ from app import db
 from sqlalchemy.orm import joinedload
 from flask import current_app as app
 from sqlalchemy.exc import SQLAlchemyError
-
+from sqlalchemy.orm import joinedload
+from app.services.falta_service import FaltaService  # Importar el servicio de faltas
 class PagoService:
     def __init__(self, pago_id=None):
         self.pago_id = pago_id
@@ -130,46 +131,45 @@ class PagoService:
             raise ValueError("No se pudo obtener la lista de préstamos.")
 
 
+
+
+    
+    
     @staticmethod
-    def get_prestamos_by_grupo_tabla(grupo_id):
+    def get_prestamos_by_grupo_tabla(grupo_id, page=1, per_page=10):
         try:
-            # Obtener el grupo
             grupo = Grupo.query.get(grupo_id)
             if not grupo:
                 raise ValueError(f"No se encontró el grupo con ID: {grupo_id}")
 
-            # Obtener los titulares (clientes que no son avales) en el grupo
             titulares_en_grupo = ClienteAval.query.filter_by(grupo_id=grupo_id).all()
             id_titulares = [titular.cliente_id for titular in titulares_en_grupo]
-            
-            # Obtener los préstamos de esos titulares con relaciones cargadas
-            prestamos_cliente = Prestamo.query.options(
+
+            prestamos_cliente_query = Prestamo.query.options(
                 joinedload(Prestamo.titular),
                 joinedload(Prestamo.tipo_prestamo),
                 joinedload(Prestamo.pagos)
-            ).filter(Prestamo.cliente_id.in_(id_titulares)).all()
+            ).filter(Prestamo.cliente_id.in_(id_titulares))
+
+            total_items = prestamos_cliente_query.count()
+            prestamos_cliente = prestamos_cliente_query.limit(per_page).offset((page - 1) * per_page).all()
 
             prestamos_list = []
             for prestamo in prestamos_cliente:
                 titular = prestamo.titular
                 tipo_prestamo = prestamo.tipo_prestamo
-                # Calcular el número de pagos y semanas que debe
                 numero_pagos = len(prestamo.pagos) if prestamo.pagos else 0
-                cobranza_ideal_semanal = float(prestamo.monto_prestamo) * (float(tipo_prestamo.porcentaje_semanal))
-                print(cobranza_ideal_semanal)
-                semanas_que_debe = 0
+                cobranza_ideal_semanal = float(prestamo.monto_prestamo) * float(tipo_prestamo.porcentaje_semanal)
+                
+                semanas_que_debe = tipo_prestamo.numero_semanas  # Inicialmente igual al número de semanas
+                faltas = 0
 
-                monto_acumulado = 0
-                for pago in prestamo.pagos:
-                    monto_acumulado = float(pago.monto_pagado)
-                    if monto_acumulado >= cobranza_ideal_semanal:
-                        print(f'Pago: {pago.pago_id} con monto {pago.monto_pagado} >= {cobranza_ideal_semanal}')
-                        semanas_que_debe += 1
+                # Obtener las faltas registradas para el préstamo
+                faltas_registradas = FaltaService.get_faltas_by_prestamo_id(prestamo.prestamo_id)
+                faltas += len(faltas_registradas)
 
-                semanas_que_debe = tipo_prestamo.numero_semanas - semanas_que_debe
-
-                # Sumar el monto total pagado
-                monto_pagado = sum([float(pago.monto_pagado) for pago in prestamo.pagos])
+                # Calcular semanas que debe sumando las faltas
+                semanas_que_debe += faltas - numero_pagos  # Número de semanas originales más faltas, menos pagos completados
 
                 prestamos_list.append({
                     'GRUPO': grupo.nombre_grupo,
@@ -183,10 +183,21 @@ class PagoService:
                     'prestamo_id': prestamo.prestamo_id,
                 })
 
-            return prestamos_list
+            total_pages = (total_items + per_page - 1) // per_page
+
+            return {
+                'prestamos': prestamos_list,
+                'page': page,
+                'per_page': per_page,
+                'total_items': total_items,
+                'total_pages': total_pages
+            }
         except SQLAlchemyError as e:
             app.logger.error(f"Error obteniendo préstamos: {str(e)}")
             raise ValueError("No se pudo obtener la lista de préstamos.")
+
+
+
 
 
     @staticmethod

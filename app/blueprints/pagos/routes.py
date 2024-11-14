@@ -1,5 +1,6 @@
 from flask import Blueprint, request
 from app.services.pago_service import PagoService
+from app.services.falta_service import FaltaService
 from app.blueprints.helpers import create_response, make_error_response, handle_exceptions, validate_fields
 
 pagos_blueprint = Blueprint('pagos', __name__, url_prefix='/pagos')
@@ -65,13 +66,17 @@ def get_grupos():
 @pagos_blueprint.route('/prestamos', methods=['GET'])
 def get_prestamos_by_grupo_tabla():
     grupo_id = request.args.get('grupo_id', type=int)
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+
     if not grupo_id:
         return make_error_response('El parámetro grupo_id es requerido.', 400)
 
     def func():
-        prestamos = PagoService.get_prestamos_by_grupo_tabla(grupo_id)
-        return create_response({'prestamos': prestamos}, 200)
+        prestamos = PagoService.get_prestamos_by_grupo_tabla(grupo_id, page, per_page)
+        return create_response(prestamos, 200)
     return handle_exceptions(func)
+
 
 
 
@@ -83,4 +88,13 @@ def get_pagos_by_prestamo_tabla(prestamo_id):
             return make_error_response('El parámetro prestamo_id es requerido.', 400)
         pagos = PagoService.get_pagos_by_prestamo_tabla(prestamo_id)
         return create_response({'pagos': pagos}, 200)
+    return handle_exceptions(func)
+
+@pagos_blueprint.route('/faltas/<int:prestamo_id>', methods=['GET'])
+def get_faltas_by_prestamo(prestamo_id):
+    def func():
+        if not prestamo_id:
+            return make_error_response('El parámetro prestamo_id es requerido.', 400)
+        faltas = FaltaService.get_faltas_by_prestamo_id(prestamo_id)
+        return create_response({'faltas': faltas}, 200)
     return handle_exceptions(func)
