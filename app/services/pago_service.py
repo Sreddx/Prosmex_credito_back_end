@@ -7,6 +7,7 @@ from flask import current_app as app
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 from app.services.falta_service import FaltaService  # Importar el servicio de faltas
+from app.services.prestamo_service import PrestamoService  # Importar el servicio de préstamos
 class PagoService:
     def __init__(self, pago_id=None):
         self.pago_id = pago_id
@@ -159,7 +160,7 @@ class PagoService:
                 titular = prestamo.titular
                 tipo_prestamo = prestamo.tipo_prestamo
                 numero_pagos = len(prestamo.pagos) if prestamo.pagos else 0
-                cobranza_ideal_semanal = float(prestamo.monto_prestamo) * float(tipo_prestamo.porcentaje_semanal)
+                
                 
                 semanas_que_debe = tipo_prestamo.numero_semanas  # Inicialmente igual al número de semanas
                 faltas = 0
@@ -170,13 +171,17 @@ class PagoService:
 
                 # Calcular semanas que debe sumando las faltas
                 semanas_que_debe += faltas - numero_pagos  # Número de semanas originales más faltas, menos pagos completados
-
+                
+                # Calcular cobranza ideal
+                cobranza_ideal_prestamo = prestamo.calcular_cobranza_ideal()
+                
                 prestamos_list.append({
                     'GRUPO': grupo.nombre_grupo,
                     'CLIENTE': titular.getNombreCompleto(),
                     'AVAL': prestamo.aval.getNombreCompleto(),
                     'MONTO_PRÉSTAMO': float(prestamo.monto_prestamo),
                     'FECHA_PRÉSTAMO': prestamo.fecha_inicio.strftime('%Y-%m-%d'),
+                    'COBRANZA_IDEAL_SEMANAL': cobranza_ideal_prestamo,
                     'TIPO_PRESTAMO': prestamo.tipo_prestamo.nombre,
                     'NUMERO_PAGOS': numero_pagos,
                     'SEMANAS_QUE_DEBE': semanas_que_debe,
