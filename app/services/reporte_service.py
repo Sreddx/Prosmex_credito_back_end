@@ -169,7 +169,6 @@ class ReporteService:
             'total_items': total_items
         }
 
-
     @staticmethod
     def obtener_totales():
         # Configuración inicial y obtención del usuario
@@ -216,10 +215,12 @@ class ReporteService:
             func.sum(func.coalesce(pagos_por_grupo.c.total_pagos, 0)).label('total_cobranza_real'),
             func.sum(func.coalesce(Prestamo.monto_prestamo, 0)).label('total_prestamo_real'),
             func.sum(
-                func.coalesce(Prestamo.monto_prestamo, 0) -
+                func.coalesce(Prestamo.monto_prestamo, 0) - 
                 func.coalesce(Pago.monto_pagado, 0)
             ).label('total_prestamo_papel'),
-            func.count(func.distinct(Prestamo.prestamo_id)).label('total_numero_de_creditos')
+            func.count(func.distinct(Prestamo.prestamo_id)).label('total_numero_de_creditos'),
+            func.count(func.distinct(Prestamo.prestamo_id)).label('total_numero_de_prestamos'),
+            func.array_agg(Grupo.grupo_id).label('grupo_ids')  # Agregar los IDs de grupo
         ).select_from(Grupo)
 
         # Joins necesarios para el cálculo
@@ -237,19 +238,48 @@ class ReporteService:
         # Ejecutar la consulta y obtener los resultados
         result_totales = query_totales.one()
 
+        # Calcular bono si el usuario es titular
+        total_bono = 0
+        if user_role_id == 2:  # Si es titular
+            grupo_ids = result_totales.grupo_ids or []
+            for grupo_id in grupo_ids:
+                bono_data = ReporteService.calcular_bono_por_grupo(grupo_id)
+                total_bono += bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
+
+        # Calcular columnas adicionales
+        total_cobranza_ideal = result_totales.total_cobranza_ideal or 0
+        total_cobranza_real = result_totales.total_cobranza_real or 0
+        total_prestamo_real = result_totales.total_prestamo_real or 0
+        total_prestamo_papel = result_totales.total_prestamo_papel or 0
+        total_numero_de_creditos = result_totales.total_numero_de_creditos or 0
+        total_numero_de_prestamos = result_totales.total_numero_de_prestamos or 0
+
+        # Calculando morosidad
+        morosidad_monto = max(total_cobranza_ideal - float(total_cobranza_real), 0)
+        morosidad_porcentaje = (morosidad_monto / total_cobranza_ideal) * 100 if total_cobranza_ideal != 0 else 0
+
+        # Porcentaje de préstamo
+        porcentaje_prestamo = (total_prestamo_papel / total_cobranza_real) * 100 if total_cobranza_real != 0 else 0
+
+        # Sobrante
+        sobrante = total_cobranza_real - total_prestamo_papel
+
         # Construir el diccionario de respuesta
         return {
-            'total_cobranza_ideal': result_totales.total_cobranza_ideal or 0,
-            'total_cobranza_real': result_totales.total_cobranza_real or 0,
-            'total_prestamo_real': result_totales.total_prestamo_real or 0,
-            'total_prestamo_papel': result_totales.total_prestamo_papel or 0,
-            'total_numero_de_creditos': result_totales.total_numero_de_creditos or 0,
-            'total_bono': 0  # Asigna un valor predeterminado si el bono no se puede calcular en la misma consulta
+            'total_cobranza_ideal': total_cobranza_ideal,
+            'total_cobranza_real': total_cobranza_real,
+            'total_prestamo_real': total_prestamo_real,
+            'total_prestamo_papel': total_prestamo_papel,
+            'total_numero_de_creditos': total_numero_de_creditos,
+            'total_numero_de_prestamos': total_numero_de_prestamos,
+            'morosidad_monto': morosidad_monto,
+            'morosidad_porcentaje': morosidad_porcentaje,
+            'porcentaje_prestamo': porcentaje_prestamo,
+            'sobrante': sobrante,
+            'total_bono': total_bono
         }
 
-
-
-
+    
     @staticmethod
     def obtener_sobrante_total_usuario_por_prestamo(user_id):
         # Filtrar grupos por rol del usuario
