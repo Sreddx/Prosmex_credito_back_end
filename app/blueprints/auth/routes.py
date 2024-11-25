@@ -83,3 +83,27 @@ def refresh():
     # Opcional: Actualizar el access token en cookies
     set_access_cookies(response, access_token)
     return response
+
+
+@auth_blueprint.route('/register', methods=['POST'])
+def register():
+    def func():
+        payload = request.json
+        if not payload:
+            return make_error_response('Payload vacío', 400)
+        fields = validate_fields(payload, ['nombre', 'apellido_paterno', 'apellido_materno', 'usuario', 'contrasena', 'rol_id'])
+        if len(fields) > 0:
+            return make_error_response(f'Faltan los siguientes campos: {fields}', 400)
+        
+        if request.method == 'POST':
+            # Init user service
+
+            user = UsuarioService.create_user(payload)
+            return create_response({
+                "message": "Usuario creado exitosamente!",
+                "User": user.serialize()
+            }, 201)
+        else:
+            app.logger.error('Método no permitido', exc_info=True)
+            return make_error_response('Método no permitido', 405)
+    return handle_exceptions(func)
