@@ -1,5 +1,6 @@
 import os
 import pytz
+from datetime import timedelta
 
 # Definir la zona horaria de Ciudad de México
 TIMEZONE = pytz.timezone('America/Mexico_City')
@@ -11,7 +12,16 @@ class Config:
     # Establece la clave secreta y la clave JWT
     SECRET_KEY = os.environ.get('SECRET_KEY', 'prosmex_luis_sebas')
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'prosmex_luis_sebas')
-    
+    # Convert the environment variables to integers and create timedelta objects
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(
+        minutes=int(os.environ.get('JWT_ACCESS_TOKEN_EXPIRES_MINUTES', 15))
+    )
+    JWT_REFRESH_TOKEN_EXPIRES = timedelta(
+        days=int(os.environ.get('JWT_REFRESH_TOKEN_EXPIRES_DAYS', 30))
+    )
+    # Split the JWT_TOKEN_LOCATION environment variable into a list
+    JWT_TOKEN_LOCATION = ["headers", "cookies"]
+    JWT_COOKIE_SECURE = os.environ.get('JWT_COOKIE_SECURE', False)
 
 class localConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')

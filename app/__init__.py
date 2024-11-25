@@ -31,7 +31,7 @@ def create_app():
     app = Flask(__name__)
     
     app.config.from_object(localConfig)
-    
+    print(app.config)
     # Initialize the database
     engine = init_engine(app.config['SQLALCHEMY_DATABASE_URI'])
     print(app.config['SQLALCHEMY_DATABASE_URI'])
