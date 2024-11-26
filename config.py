@@ -22,6 +22,9 @@ class Config:
     # Split the JWT_TOKEN_LOCATION environment variable into a list
     JWT_TOKEN_LOCATION = ["headers", "cookies"]
     JWT_COOKIE_SECURE = os.environ.get('JWT_COOKIE_SECURE', False)
+    FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
+    DEBUG = True
+    FLASK_APP = os.environ.get('FLASK_APP', 'app.py')
 
 class localConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
