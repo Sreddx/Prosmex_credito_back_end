@@ -133,7 +133,7 @@ class ClienteAvalService:
     
     def list_clientes_registro(self, page=1, per_page=10):
         try:
-            clientes_query = ClienteAval.query.paginate(page=page, per_page=per_page, error_out=False)
+            clientes_query = ClienteAval.query.order_by(ClienteAval.nombre.asc()).paginate(page=page, per_page=per_page, error_out=False)
             clientes_list = []
             for cliente in clientes_query.items:
                 clientes_list.append({
@@ -149,7 +149,7 @@ class ClienteAvalService:
 
     def list_avales(self, page=1, per_page=10):
         try:
-            clientes_avales_query = ClienteAval.query.filter_by(es_aval=True).paginate(page=page, per_page=per_page, error_out=False)
+            clientes_avales_query = ClienteAval.query.filter_by(es_aval=True).order_by(ClienteAval.nombre.asc()).paginate(page=page, per_page=per_page, error_out=False)
             avales = []
             for aval in clientes_avales_query.items:
                 avales.append({
