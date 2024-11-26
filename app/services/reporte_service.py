@@ -78,9 +78,9 @@ class ReporteService:
             Grupo.nombre_grupo.label('grupo'),
             func.coalesce(func.sum(cobranza_ideal_case.distinct()), 0).label('cobranza_ideal'),
             func.coalesce(pagos_por_grupo.c.total_pagos, 0).label('cobranza_real'),
-            func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0).label('prestamo_real'),
+            func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0).label('prestamo_papel'), # Antes prestamo real
             (func.coalesce(func.sum(Prestamo.monto_prestamo.distinct()), 0) - 
-            func.coalesce(func.sum(Pago.monto_pagado.distinct()), 0)).label('prestamo_papel'),
+            func.coalesce(func.sum(Pago.monto_pagado.distinct()), 0)).label('prestamo_real'), # Antes prestamo papel
             func.count(func.distinct(Prestamo.prestamo_id)).label('numero_de_creditos')
         ).select_from(Grupo)
 
@@ -209,11 +209,11 @@ class ReporteService:
         query_totales = db.session.query(
             func.sum(func.coalesce(cobranza_ideal_case, 0)).label('total_cobranza_ideal'),
             func.sum(func.distinct(func.coalesce(pagos_por_grupo.c.total_pagos, 0))).label('total_cobranza_real'),
-            func.sum(func.coalesce(Prestamo.monto_prestamo, 0)).label('total_prestamo_real'),
+            func.sum(func.coalesce(Prestamo.monto_prestamo, 0)).label('total_prestamo_papel'),
             func.sum(
                 func.coalesce(Prestamo.monto_prestamo, 0) - 
                 func.coalesce(pagos_por_grupo.c.total_pagos, 0)
-            ).label('total_prestamo_papel'),
+            ).label('total_prestamo_real'),
             func.count(func.distinct(Prestamo.prestamo_id)).label('total_numero_de_creditos'),
             func.count(func.distinct(Prestamo.prestamo_id)).label('total_numero_de_prestamos'),
             func.array_agg(Grupo.grupo_id).label('grupo_ids')  # Listado de IDs de grupo
@@ -392,7 +392,7 @@ class ReporteService:
         # Retornar el total del bono para todos los grupos del titular
         return total_bono
     
-    # CALCULO DE BONOS --------------------------------------------------------------------------
+    
     
     
     
