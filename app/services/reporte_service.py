@@ -253,7 +253,7 @@ class ReporteService:
         morosidad_monto = max(total_cobranza_ideal - total_cobranza_real, 0)
         morosidad_porcentaje = (morosidad_monto / total_cobranza_ideal) * 100 if total_cobranza_ideal != 0 else 0
         porcentaje_prestamo = (total_prestamo_real / total_cobranza_ideal) * 100 if total_cobranza_ideal != 0 else 0
-        sobrante = total_cobranza_real - total_prestamo_papel
+        sobrante = total_cobranza_real - total_prestamo_papel - total_bono
 
         # Construir el resultado
         return {
