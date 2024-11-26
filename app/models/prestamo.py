@@ -51,7 +51,7 @@ class Prestamo(db.Model):
     # Ensure that monto_prestado is greater than 0
     __table_args__ = (
         CheckConstraint('monto_prestamo > 0', name='check_monto_prestamo_positive'),
-        UniqueConstraint('aval_id', name='uq_aval_id')  # Enforce unique aval_id
+        # UniqueConstraint('aval_id', name='uq_aval_id')  # Enforce unique aval_id
     )
     
     
@@ -71,7 +71,6 @@ class Prestamo(db.Model):
             raise ValueError("El monto del préstamo debe ser mayor que 0.")
         return value
 
-    # Validation to ensure the aval has not been used in another loan within the same group
     @validates('aval_id')
     def validate_aval_id(self, key, aval_id):
         # Get the group of the cliente
@@ -79,12 +78,13 @@ class Prestamo(db.Model):
         if not cliente:
             raise ValueError(f"Cliente con ID {self.cliente_id} no encontrado.")
 
-        # Check if the aval already has a loan in the same group
+        # Check if the aval has a loan in the same group for a different client
         existing_prestamo = (
             Prestamo.query
             .join(ClienteAval, Prestamo.aval_id == ClienteAval.cliente_id)
             .filter(ClienteAval.grupo_id == cliente.grupo_id)
             .filter(Prestamo.aval_id == aval_id)
+            .filter(Prestamo.cliente_id != self.cliente_id)  # Ensure it's for a different client
             .filter(Prestamo.prestamo_id != self.prestamo_id)  # Exclude the current loan (if updating)
             .first()
         )
@@ -153,4 +153,13 @@ class Prestamo(db.Model):
             db.session.rollback()
             raise ValueError(f"No se pudo verificar el pago: {str(e)}")
         
+    def calcular_monto_pagado(self):
+        """Calcula el monto total pagado por el cliente."""
+        monto_pagado = sum([pago.monto_pagado for pago in self.pagos]) if self.pagos else 0
+        return monto_pagado
     
+    def calcular_monto_restante(self):
+        """Calcula el monto restante por pagar del cliente."""
+        monto_restante = self.monto_prestamo- self.calcular_monto_pagado()
+        return monto_restante
+

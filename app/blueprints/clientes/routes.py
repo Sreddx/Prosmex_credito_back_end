@@ -129,3 +129,52 @@ def estados_civiles():
 
     return handle_exceptions(func)
 
+@cliente_blueprint.route('/monto-prestado/<int:cliente_id>', methods=['GET'])
+def calcular_monto_prestado(cliente_id):
+    def func():
+        cliente_service = ClienteAvalService(cliente_id)
+        cliente = cliente_service.get_cliente()
+        monto_prestado = cliente.calcular_monto_prestado()
+        return create_response({'monto_prestado': monto_prestado}, 200)
+
+    return handle_exceptions(func)
+
+@cliente_blueprint.route('/monto-pagado/<int:cliente_id>', methods=['GET'])
+def calcular_monto_pagado(cliente_id):
+    def func():
+        cliente_service = ClienteAvalService(cliente_id)
+        cliente = cliente_service.get_cliente()
+        monto_pagado = cliente.calcular_monto_pagado()
+        return create_response({'monto_pagado': monto_pagado}, 200)
+
+    return handle_exceptions(func)
+
+@cliente_blueprint.route('/monto-restante/<int:cliente_id>', methods=['GET'])
+def calcular_monto_restante(cliente_id):
+    def func():
+        cliente_service = ClienteAvalService(cliente_id)
+        cliente = cliente_service.get_cliente()
+        monto_restante = cliente.calcular_monto_restante()
+        return create_response({'monto_restante': monto_restante}, 200)
+
+    return handle_exceptions(func)
+
+@cliente_blueprint.route('/prestamo-papel/<int:cliente_id>', methods=['GET'])
+def calcular_prestamo_papel(cliente_id):
+    def func():
+        cliente_service = ClienteAvalService(cliente_id)
+        cliente = cliente_service.get_cliente()
+        prestamo_papel = cliente.calcular_prestamo_papel()
+        return create_response({'prestamo_papel': prestamo_papel}, 200)
+
+    return handle_exceptions(func)
+
+@cliente_blueprint.route('/prestamo-real/<int:cliente_id>', methods=['GET'])
+def calcular_prestamo_real(cliente_id):
+    def func():
+        cliente_service = ClienteAvalService(cliente_id)
+        cliente = cliente_service.get_cliente()
+        prestamo_real = cliente.calcular_prestamo_real()
+        return create_response({'prestamo_real': prestamo_real}, 200)
+
+    return handle_exceptions(func)
