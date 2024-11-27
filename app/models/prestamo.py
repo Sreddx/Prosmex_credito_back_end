@@ -1,6 +1,5 @@
 from sqlalchemy.orm import validates
 from sqlalchemy import CheckConstraint, UniqueConstraint
-from .cliente_aval import ClienteAval
 from .falta import Falta
 from ..database import db
 from datetime import datetime, timedelta
@@ -73,6 +72,7 @@ class Prestamo(db.Model):
 
     @validates('aval_id')
     def validate_aval_id(self, key, aval_id):
+        from app.models.cliente_aval import ClienteAval
         # Get the group of the cliente
         cliente = ClienteAval.query.get(self.cliente_id)
         if not cliente:

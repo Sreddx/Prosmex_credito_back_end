@@ -1,6 +1,7 @@
+from sqlalchemy import case, func, select
 from ..database import db
 from sqlalchemy.orm import validates
-
+from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 class ClienteAval(db.Model):
     __tablename__ = 'clientes_avales'
     cliente_id = db.Column(db.Integer, primary_key=True)
@@ -16,7 +17,92 @@ class ClienteAval(db.Model):
     es_aval = db.Column(db.Boolean, default=True)
     grupo_id = db.Column(db.Integer, db.ForeignKey('grupos.grupo_id'))
     
-    
+    # Propiedades hibridas para calculos de prestamos
+    @hybrid_property
+    def prestamo_papel(self):
+        if self.prestamos_como_titular:
+            return self.prestamos_como_titular[-1].monto_prestamo
+        else:
+            return 0
+
+    @prestamo_papel.expression
+    def prestamo_papel(cls):
+        from app.models.prestamo import Prestamo
+
+        prestamo_papel_subquery = (
+            select(Prestamo.monto_prestamo)
+            .where(Prestamo.cliente_id == cls.cliente_id)
+            .order_by(Prestamo.prestamo_id.desc())
+            .limit(1)
+            .correlate(cls)
+            .scalar_subquery()
+        )
+
+        return func.coalesce(prestamo_papel_subquery, 0)
+
+    @hybrid_property
+    def prestamo_real(self):
+        return self.prestamo_papel - self.calcular_adeudo_cliente_sin_adeudo_prestamo_actual()
+
+    @prestamo_real.expression
+    def prestamo_real(cls):
+        from app.models.prestamo import Prestamo
+        from app.models.pago import Pago
+
+        # Subconsulta para obtener el ID del préstamo más reciente del cliente
+        latest_prestamo_subquery = (
+            select(Prestamo.prestamo_id)
+            .where(Prestamo.cliente_id == cls.cliente_id)
+            .order_by(Prestamo.prestamo_id.desc())
+            .limit(1)
+            .correlate(cls)
+            .scalar_subquery()
+        )
+
+        # Subconsulta para obtener el total pagado por préstamo
+        total_pagado_subquery = (
+            select(
+                Pago.prestamo_id.label('prestamo_id'),
+                func.sum(Pago.monto_pagado).label('total_pagado')
+            )
+            .group_by(Pago.prestamo_id)
+            .subquery()
+        )
+
+        # Subconsulta para calcular el adeudo sin considerar el préstamo actual
+        adeudo_prestamos_subquery = (
+            select(
+                func.coalesce(
+                    func.sum(
+                        Prestamo.monto_prestamo - func.coalesce(total_pagado_subquery.c.total_pagado, 0)
+                    ), 0
+                ).label('adeudo_sin_prestamo_actual')
+            )
+            .select_from(Prestamo)
+            .outerjoin(
+                total_pagado_subquery,
+                Prestamo.prestamo_id == total_pagado_subquery.c.prestamo_id
+            )
+            .where(Prestamo.cliente_id == cls.cliente_id)
+            .where(Prestamo.prestamo_id != latest_prestamo_subquery)
+            .correlate(cls)
+            .scalar_subquery()
+        )
+
+        # Subconsulta para obtener el monto_prestamo del préstamo más reciente (prestamo_papel)
+        prestamo_papel_subquery = (
+            select(Prestamo.monto_prestamo)
+            .where(Prestamo.cliente_id == cls.cliente_id)
+            .order_by(Prestamo.prestamo_id.desc())
+            .limit(1)
+            .correlate(cls)
+            .scalar_subquery()
+        )
+
+        # Calcular prestamo_real
+        return func.coalesce(prestamo_papel_subquery, 0) - func.coalesce(adeudo_prestamos_subquery, 0)
+
+
 
     @validates('cp')
     def validate_cp(self, key, cp):

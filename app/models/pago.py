@@ -1,7 +1,6 @@
 from datetime import datetime
 import pytz
 from ..database import db
-from .prestamo import Prestamo
 from app.constants import TIMEZONE
 class Pago(db.Model):
     __tablename__ = 'pagos'
@@ -13,6 +12,7 @@ class Pago(db.Model):
     
     
     def serialize(self):
+        from app.models.prestamo import Prestamo
         prestamo = Prestamo.query.get(self.prestamo_id)
         if not prestamo:
             raise ValueError(f"No se encontró el préstamo con ID: {self.prestamo_id}")
