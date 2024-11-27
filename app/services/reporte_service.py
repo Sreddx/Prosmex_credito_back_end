@@ -261,9 +261,6 @@ class ReporteService:
             'total_items': total_items
         }
 
-
-
-
     @staticmethod
     def obtener_totales():
         # Configuración inicial y obtención del usuario
@@ -281,45 +278,82 @@ class ReporteService:
 
         # Calcular la semana actual
         from datetime import datetime, timedelta
-        start_of_week = datetime.now().date() - timedelta(days=datetime.now().weekday())
+        import pytz
+        mexico_city_tz = pytz.timezone('America/Mexico_City')
+        current_date = datetime.now(mexico_city_tz).date()
+        start_of_week = current_date - timedelta(days=current_date.weekday())
         end_of_week = start_of_week + timedelta(days=6)
 
-        # Subconsulta para pagos agrupados por grupo (con filtro de semana actual)
+        # Subconsulta para pagos agrupados por grupo (cobranza real)
         pagos_por_grupo = (
             db.session.query(
                 Grupo.grupo_id.label('grupo_id'),
-                func.sum(func.distinct(Pago.monto_pagado)).label('total_pagos')  # Asegurar no duplicar pagos
+                func.sum(Pago.monto_pagado).label('total_pagos')
             )
             .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
             .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
             .join(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
-            .filter(Pago.fecha_pago >= start_of_week, Pago.fecha_pago <= end_of_week)  # Filtro por semana
+            .filter(
+                Pago.fecha_pago >= start_of_week,
+                Pago.fecha_pago <= end_of_week
+            )
             .group_by(Grupo.grupo_id)
-        ).subquery()
+            .subquery()
+        )
 
-        # Calcular cobranza ideal basada en el tipo de préstamo
-        cobranza_ideal_case = Prestamo.monto_prestamo * TipoPrestamo.porcentaje_semanal
+        # Subconsulta para calcular cobranza ideal por grupo
+        cobranza_ideal_por_grupo = (
+            db.session.query(
+                Grupo.grupo_id.label('grupo_id'),
+                func.sum(Prestamo.monto_prestamo * TipoPrestamo.porcentaje_semanal).label('cobranza_ideal')
+            )
+            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
+            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .join(TipoPrestamo, Prestamo.tipo_prestamo_id == TipoPrestamo.tipo_prestamo_id)
+            .group_by(Grupo.grupo_id)
+            .subquery()
+        )
 
-        # Query principal para los totales
+        # Subconsulta para total de prestamo_papel y prestamo_real por grupo usando propiedades híbridas
+        prestamo_totales_por_grupo = (
+            db.session.query(
+                Grupo.grupo_id.label('grupo_id'),
+                func.sum(func.coalesce(ClienteAval.prestamo_papel, 0)).label('total_prestamo_papel'),
+                func.sum(func.coalesce(ClienteAval.prestamo_real, 0)).label('total_prestamo_real')
+            )
+            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
+            .group_by(Grupo.grupo_id)
+            .subquery()
+        )
+
+        # Subconsulta para número de créditos por grupo
+        numero_de_creditos_por_grupo = (
+            db.session.query(
+                Grupo.grupo_id.label('grupo_id'),
+                func.count(Prestamo.prestamo_id).label('numero_de_creditos')
+            )
+            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
+            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .group_by(Grupo.grupo_id)
+            .subquery()
+        )
+
+        # Construcción de la consulta principal para los totales
         query_totales = db.session.query(
-            func.sum(func.coalesce(cobranza_ideal_case, 0)).label('total_cobranza_ideal'),
-            func.sum(func.distinct(func.coalesce(pagos_por_grupo.c.total_pagos, 0))).label('total_cobranza_real'),
-            func.sum(func.coalesce(Prestamo.monto_prestamo, 0)).label('total_prestamo_papel'),
-            func.sum(
-                func.coalesce(Prestamo.monto_prestamo, 0) - 
-                func.coalesce(pagos_por_grupo.c.total_pagos, 0)
-            ).label('total_prestamo_real'),
-            func.count(func.distinct(Prestamo.prestamo_id)).label('total_numero_de_creditos'),
-            func.count(func.distinct(Prestamo.prestamo_id)).label('total_numero_de_prestamos'),
+            func.sum(cobranza_ideal_por_grupo.c.cobranza_ideal).label('total_cobranza_ideal'),
+            func.sum(pagos_por_grupo.c.total_pagos).label('total_cobranza_real'),
+            func.sum(prestamo_totales_por_grupo.c.total_prestamo_papel).label('total_prestamo_papel'),
+            func.sum(prestamo_totales_por_grupo.c.total_prestamo_real).label('total_prestamo_real'),
+            func.sum(numero_de_creditos_por_grupo.c.numero_de_creditos).label('total_numero_de_creditos'),
             func.array_agg(Grupo.grupo_id).label('grupo_ids')  # Listado de IDs de grupo
         ).select_from(Grupo)
 
-        # Agregar los joins necesarios
-        query_totales = query_totales.outerjoin(Ruta, Grupo.ruta_id == Ruta.ruta_id)
-        query_totales = query_totales.outerjoin(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
-        query_totales = query_totales.outerjoin(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
-        query_totales = query_totales.outerjoin(TipoPrestamo, Prestamo.tipo_prestamo_id == TipoPrestamo.tipo_prestamo_id)
+        # Unir las subconsultas
+        query_totales = query_totales.outerjoin(cobranza_ideal_por_grupo, cobranza_ideal_por_grupo.c.grupo_id == Grupo.grupo_id)
         query_totales = query_totales.outerjoin(pagos_por_grupo, pagos_por_grupo.c.grupo_id == Grupo.grupo_id)
+        query_totales = query_totales.outerjoin(prestamo_totales_por_grupo, prestamo_totales_por_grupo.c.grupo_id == Grupo.grupo_id)
+        query_totales = query_totales.outerjoin(numero_de_creditos_por_grupo, numero_de_creditos_por_grupo.c.grupo_id == Grupo.grupo_id)
+        query_totales = query_totales.outerjoin(Ruta, Grupo.ruta_id == Ruta.ruta_id)
 
         # Aplicar filtros de usuario si existen
         if filters:
@@ -337,12 +371,11 @@ class ReporteService:
                 total_bono += bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
 
         # Extraer resultados y calcular adicionales
-        total_cobranza_ideal = result_totales.total_cobranza_ideal or 0
+        total_cobranza_ideal = float(result_totales.total_cobranza_ideal or 0)
         total_cobranza_real = float(result_totales.total_cobranza_real or 0)
-        total_prestamo_real = float(result_totales.total_prestamo_real or 0)
         total_prestamo_papel = float(result_totales.total_prestamo_papel or 0)
-        total_numero_de_creditos = result_totales.total_numero_de_creditos or 0
-        total_numero_de_prestamos = result_totales.total_numero_de_prestamos or 0
+        total_prestamo_real = float(result_totales.total_prestamo_real or 0)
+        total_numero_de_creditos = int(result_totales.total_numero_de_creditos or 0)
 
         # Morosidad y métricas relacionadas
         morosidad_monto = max(total_cobranza_ideal - total_cobranza_real, 0)
@@ -357,7 +390,6 @@ class ReporteService:
             'total_prestamo_real': total_prestamo_real,
             'total_prestamo_papel': total_prestamo_papel,
             'total_numero_de_creditos': total_numero_de_creditos,
-            'total_numero_de_prestamos': total_numero_de_prestamos,
             'morosidad_monto': morosidad_monto,
             'morosidad_porcentaje': morosidad_porcentaje,
             'porcentaje_prestamo': porcentaje_prestamo,
@@ -365,10 +397,7 @@ class ReporteService:
             'total_bono': total_bono
         }
 
-
-
-
-    
+        
     @staticmethod
     def obtener_sobrante_total_usuario_por_prestamo(user_id):
         # Filtrar grupos por rol del usuario
