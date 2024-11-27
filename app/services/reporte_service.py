@@ -138,6 +138,18 @@ class ReporteService:
             .subquery()
         )
 
+        # Subconsulta para número de créditos por grupo
+        numero_de_creditos_por_grupo = (
+            db.session.query(
+                Grupo.grupo_id.label('grupo_id'),
+                func.count(Prestamo.prestamo_id).label('numero_de_creditos')
+            )
+            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
+            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .group_by(Grupo.grupo_id)
+            .subquery()
+        )
+
         # Construcción de la consulta principal
         query = db.session.query(
             Grupo.grupo_id,
@@ -157,11 +169,9 @@ class ReporteService:
                     )
                 ), 0
             ).label('prestamo_real'),
-            func.count(func.distinct(Prestamo.prestamo_id)).label('numero_de_creditos')
+            func.coalesce(numero_de_creditos_por_grupo.c.numero_de_creditos, 0).label('numero_de_creditos')
         ).select_from(Grupo)
 
-
-        
         # Joins necesarios
         query = query.outerjoin(Ruta, Grupo.ruta_id == Ruta.ruta_id)
         query = query.outerjoin(usuarios_supervisor, Ruta.usuario_id_supervisor == usuarios_supervisor.id)
@@ -172,7 +182,7 @@ class ReporteService:
         query = query.outerjoin(adeudo_anterior_por_cliente, adeudo_anterior_por_cliente.c.cliente_id == ClienteAval.cliente_id)
         query = query.outerjoin(pagos_por_grupo, pagos_por_grupo.c.grupo_id == Grupo.grupo_id)
         query = query.outerjoin(cobranza_ideal_por_grupo, cobranza_ideal_por_grupo.c.grupo_id == Grupo.grupo_id)
-
+        query = query.outerjoin(numero_de_creditos_por_grupo, numero_de_creditos_por_grupo.c.grupo_id == Grupo.grupo_id)
 
         # Aplicar filtros si existen
         if filters:
@@ -191,9 +201,9 @@ class ReporteService:
             Ruta.nombre_ruta,
             Grupo.nombre_grupo,
             pagos_por_grupo.c.total_pagos,
-            cobranza_ideal_por_grupo.c.cobranza_ideal
+            cobranza_ideal_por_grupo.c.cobranza_ideal,
+            numero_de_creditos_por_grupo.c.numero_de_creditos
         )
-
 
         # Obtener el total de resultados antes de la paginación
         total_items = query.count()
@@ -249,6 +259,7 @@ class ReporteService:
             'per_page': per_page,
             'total_items': total_items
         }
+
 
 
 
