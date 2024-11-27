@@ -227,9 +227,10 @@ class ReporteService:
             numero_de_creditos = row.numero_de_creditos or 0
 
             # Cálculo de la morosidad basado en la diferencia entre cobranza ideal y pagos reales
-            morosidad_monto = max(cobranza_ideal - cobranza_real, 0)
+            # Morosidad es suma de sobrantes de un grupo dada las fallas por prestamo
+            morosidad_monto = max(cobranza_ideal - cobranza_real, 0) 
             morosidad_porcentaje = (morosidad_monto / cobranza_ideal) if cobranza_ideal != 0 else None
-            porcentaje_prestamo = (prestamo_papel / cobranza_real) if cobranza_real != 0 else None
+            porcentaje_prestamo = (prestamo_real / cobranza_real) if cobranza_real != 0 else None
             sobrante = cobranza_real - prestamo_papel - bono
 
             # Agregar datos al reporte
