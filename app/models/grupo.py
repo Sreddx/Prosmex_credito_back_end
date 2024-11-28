@@ -29,3 +29,12 @@ class Grupo(db.Model):
             'ruta_id': self.ruta_id,
             'usuario_id_titular': self.usuario_id_titular
         }
+
+    def calcular_morosidad_de_prestamos_en_grupo(self):
+        """Calcula la morosidad de los préstamos en el grupo."""
+        # Se obtienen los clientes del grupo, se sacan los montos restantes de cada cliente y se suman
+        morosidad_total = 0
+        for cliente in self.clientes_avales:
+            morosidad_total += cliente.calcular_monto_restante()
+        return morosidad_total
+        

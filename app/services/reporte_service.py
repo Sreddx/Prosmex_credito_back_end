@@ -162,6 +162,24 @@ class ReporteService:
             .subquery()
         )
 
+        # Subconsulta monto morosidad. Suma de monto restante por cliente por grupo
+        morosidad_por_grupo = (
+            db.session.query(
+                Grupo.grupo_id.label('grupo_id'),
+                func.sum(func.coalesce(
+                    Prestamo.monto_prestamo - func.coalesce(total_pagado_por_prestamo.c.total_pagado, 0), 0
+                )).label('morosidad')
+            )
+            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
+            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .outerjoin(
+                total_pagado_por_prestamo,
+                Prestamo.prestamo_id == total_pagado_por_prestamo.c.prestamo_id
+            )
+            .group_by(Grupo.grupo_id)
+            .subquery()
+        )
+        
         # Construcción de la consulta principal
         query = db.session.query(
             Grupo.grupo_id,
@@ -182,7 +200,8 @@ class ReporteService:
                 ), 0
             ).label('prestamo_real'),
             func.coalesce(numero_de_creditos_por_grupo.c.numero_de_creditos, 0).label('numero_de_creditos'),
-            func.coalesce(numero_de_prestamos_activos_por_grupo.c.numero_de_prestamos_activos, 0).label('numero_de_prestamos_activos')
+            func.coalesce(numero_de_prestamos_activos_por_grupo.c.numero_de_prestamos_activos, 0).label('numero_de_prestamos_activos'),
+            func.coalesce(morosidad_por_grupo.c.morosidad, 0).label('morosidad')
         ).select_from(Grupo)
 
         # Joins necesarios
@@ -197,6 +216,7 @@ class ReporteService:
         query = query.outerjoin(cobranza_ideal_por_grupo, cobranza_ideal_por_grupo.c.grupo_id == Grupo.grupo_id)
         query = query.outerjoin(numero_de_creditos_por_grupo, numero_de_creditos_por_grupo.c.grupo_id == Grupo.grupo_id)
         query = query.outerjoin(numero_de_prestamos_activos_por_grupo, numero_de_prestamos_activos_por_grupo.c.grupo_id == Grupo.grupo_id)
+        query = query.outerjoin(morosidad_por_grupo, morosidad_por_grupo.c.grupo_id == Grupo.grupo_id)
 
         # Aplicar filtros si existen
         if filters:
@@ -217,7 +237,8 @@ class ReporteService:
             pagos_por_grupo.c.total_pagos,
             cobranza_ideal_por_grupo.c.cobranza_ideal,
             numero_de_creditos_por_grupo.c.numero_de_creditos,
-            numero_de_prestamos_activos_por_grupo.c.numero_de_prestamos_activos
+            numero_de_prestamos_activos_por_grupo.c.numero_de_prestamos_activos,
+            morosidad_por_grupo.c.morosidad
         )
 
         # Obtener el total de resultados antes de la paginación
@@ -244,7 +265,7 @@ class ReporteService:
 
             # Cálculo de la morosidad basado en la diferencia entre cobranza ideal y pagos reales
             # Morosidad es suma de sobrantes de un grupo dada las fallas por prestamo
-            morosidad_monto = max(cobranza_ideal - cobranza_real, 0) 
+            morosidad_monto = float(row.morosidad or 0)
             morosidad_porcentaje = (morosidad_monto / cobranza_ideal) if cobranza_ideal != 0 else None
             porcentaje_prestamo = (prestamo_real / cobranza_real) if cobranza_real != 0 else None
             sobrante = cobranza_real - prestamo_papel - bono
@@ -367,6 +388,8 @@ class ReporteService:
             .subquery()
         )
 
+        # Obtener morosidad por grupo y sumarla
+        
         # Construcción de la consulta principal para los totales
         query_totales = db.session.query(
             func.sum(cobranza_ideal_por_grupo.c.cobranza_ideal).label('total_cobranza_ideal'),
