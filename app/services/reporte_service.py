@@ -389,7 +389,19 @@ class ReporteService:
         )
 
         # Obtener morosidad por grupo y sumarla
-        
+        morosidad_por_grupo = (
+            db.session.query(
+                Grupo.grupo_id.label('grupo_id'),
+                func.sum(func.coalesce(
+                    Prestamo.monto_prestamo - func.coalesce(Pago.monto_pagado, 0), 0
+                )).label('morosidad')
+            )
+            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
+            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .outerjoin(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
+            .group_by(Grupo.grupo_id)
+            .subquery()
+        )
         # Construcción de la consulta principal para los totales
         query_totales = db.session.query(
             func.sum(cobranza_ideal_por_grupo.c.cobranza_ideal).label('total_cobranza_ideal'),
@@ -398,6 +410,7 @@ class ReporteService:
             func.sum(prestamo_totales_por_grupo.c.total_prestamo_real).label('total_prestamo_real'),
             func.sum(numero_de_creditos_por_grupo.c.numero_de_creditos).label('total_numero_de_creditos'),
             func.sum(numero_de_prestamos_activos_por_grupo.c.numero_de_prestamos_activos).label('total_numero_de_prestamos_activos'),
+            func.sum(morosidad_por_grupo.c.morosidad).label('total_morosidad'),
             func.array_agg(Grupo.grupo_id).label('grupo_ids')  # Listado de IDs de grupo
         ).select_from(Grupo)
 
@@ -407,6 +420,7 @@ class ReporteService:
         query_totales = query_totales.outerjoin(prestamo_totales_por_grupo, prestamo_totales_por_grupo.c.grupo_id == Grupo.grupo_id)
         query_totales = query_totales.outerjoin(numero_de_creditos_por_grupo, numero_de_creditos_por_grupo.c.grupo_id == Grupo.grupo_id)
         query_totales = query_totales.outerjoin(numero_de_prestamos_activos_por_grupo, numero_de_prestamos_activos_por_grupo.c.grupo_id == Grupo.grupo_id)
+        query_totales = query_totales.outerjoin(morosidad_por_grupo, morosidad_por_grupo.c.grupo_id == Grupo.grupo_id)
         query_totales = query_totales.outerjoin(Ruta, Grupo.ruta_id == Ruta.ruta_id)
 
         # Aplicar filtros de usuario si existen
@@ -432,9 +446,10 @@ class ReporteService:
         total_numero_de_creditos = int(result_totales.total_numero_de_creditos or 0)
         total_prestamos_activos = int(result_totales.total_numero_de_prestamos_activos or 0)
         
+        
 
         # Morosidad y métricas relacionadas
-        morosidad_monto = max(total_cobranza_ideal - total_cobranza_real, 0)
+        morosidad_monto = float(result_totales.total_morosidad or 0)
         morosidad_porcentaje = round((morosidad_monto / total_cobranza_ideal) * 100, 2) if total_cobranza_ideal != 0 else 0
         porcentaje_prestamo = round((total_prestamo_real / total_cobranza_real) * 100, 2) if total_cobranza_real != 0 else 0
         sobrante = total_cobranza_real - total_prestamo_papel - total_bono
