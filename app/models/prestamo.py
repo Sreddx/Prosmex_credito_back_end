@@ -17,6 +17,8 @@ class Prestamo(db.Model):
     tipo_prestamo_id = db.Column(db.Integer, db.ForeignKey('tipos_prestamo.tipo_prestamo_id'), nullable=False)
     completado = db.Column(db.Boolean, default=False, nullable=False)
     status = db.Column(db.Enum('activo', 'renovado', 'liquidado', 'vencido', name='status_prestamo'), default='activo', nullable=False)
+    renovacion = db.Column(db.Boolean, default=False, nullable=False)
+    semana_activa = db.Column(db.Integer, default=0, nullable=False)
     
     
     # Relaciones
@@ -53,15 +55,49 @@ class Prestamo(db.Model):
         # UniqueConstraint('aval_id', name='uq_aval_id')  # Enforce unique aval_id
     )
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.verificar_si_es_renovacion()
+        
+    def verificar_si_es_renovacion(self):
+        """
+        Verifica si el préstamo es una renovación.
+        """
+        prestamo_anterior = Prestamo.query.filter_by(cliente_id=self.cliente_id, status='activo').first()
+        
+        if prestamo_anterior and prestamo_anterior.semana_activa >= 9:
+            self.renovacion = True
+            self.completar_prestamo_anterior_restar_monto_faltante_monto_prestamo_actual(prestamo_anterior)
+    
+    def completar_prestamo_anterior_restar_monto_faltante_monto_prestamo_actual(self, prestamo_anterior):
+        """
+        Completa el préstamo anterior y resta el monto faltante al monto del préstamo actual.
+        """
+        if not prestamo_anterior:
+            raise ValueError("No se encontró un préstamo anterior.")
+        if prestamo_anterior.completado:
+            raise ValueError("El préstamo anterior ya está completado.")
+        
+        monto_faltante = prestamo_anterior.monto_utilidad - prestamo_anterior.calcular_monto_pagado()
+        prestamo_anterior.completado = True
+        self.monto_prestamo -= monto_faltante
+        self.monto_utilidad += monto_faltante
+        db.session.commit()
+    
+    def actualizar_semana_activa(self, cubre_cobranza):
+        if cubre_cobranza:
+            self.semana_activa += 1
+            db.session.commit()
     
     def verificar_completado(self):
         """Calcula si el préstamo está completo sumando los pagos."""
         monto_pagado_total = sum([float(pago.monto_pagado) for pago in self.pagos])
-        if monto_pagado_total >= float(self.monto_utilidad):
+        if monto_pagado_total >= self.monto_utilidad or self.semana_activa == self.tipo_prestamo.numero_semanas:
             self.completado = True
         else:
             self.completado = False
         db.session.commit()
+    
     
     # Validation for monto_prestamo > 0
     @validates('monto_prestamo')

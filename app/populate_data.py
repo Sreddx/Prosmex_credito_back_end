@@ -122,11 +122,11 @@ def populate_data():
 
         # Crear datos predeterminados para Tipos de Préstamo
         tipos_prestamo = [
-            {'tipo_prestamo_id': 1, 'nombre': 'Préstamo Tipo 14 semanas', 'numero_semanas': 14, 'porcentaje_semanal': 0.1, 'incumplimientos_tolerados': 1, 'pena_incumplimiento': 1.0, 'limite_penalizaciones': 1},
-            {'tipo_prestamo_id': 34, 'nombre': 'Préstamo Tipo 20 semanas', 'numero_semanas': 20, 'porcentaje_semanal': 0.07, 'incumplimientos_tolerados': 1, 'pena_incumplimiento': 1.0, 'limite_penalizaciones': 4},
-            {'tipo_prestamo_id': 35, 'nombre': 'Préstamo Tipo 30 semanas', 'numero_semanas': 30, 'porcentaje_semanal': 0.05, 'incumplimientos_tolerados': 1, 'pena_incumplimiento': 2.0, 'limite_penalizaciones': 4},
-            {'tipo_prestamo_id': 36, 'nombre': 'Préstamo Tipo 11 semanas', 'numero_semanas': 11, 'porcentaje_semanal': 0.1, 'incumplimientos_tolerados': 1, 'pena_incumplimiento': 1.0, 'limite_penalizaciones': 4},
-            {'tipo_prestamo_id': 37, 'nombre': 'Préstamo Tipo 13 semanas', 'numero_semanas': 13, 'porcentaje_semanal': 0.1, 'incumplimientos_tolerados': 1, 'pena_incumplimiento': 1.0, 'limite_penalizaciones': 4}
+            {'tipo_prestamo_id': 1, 'nombre': 'Préstamo Tipo 14 semanas', 'numero_semanas': 14, 'porcentaje_semanal': 0.1, 'incumplimientos_tolerados': 1, 'pena_incumplimiento': 1.0, 'limite_penalizaciones': 1, 'interes': 0.4},
+            {'tipo_prestamo_id': 34, 'nombre': 'Préstamo Tipo 20 semanas', 'numero_semanas': 20, 'porcentaje_semanal': 0.07, 'incumplimientos_tolerados': 1, 'pena_incumplimiento': 1.0, 'limite_penalizaciones': 4, 'interes': 0.4},
+            {'tipo_prestamo_id': 35, 'nombre': 'Préstamo Tipo 30 semanas', 'numero_semanas': 30, 'porcentaje_semanal': 0.05, 'incumplimientos_tolerados': 1, 'pena_incumplimiento': 2.0, 'limite_penalizaciones': 4, 'interes': 0.5},
+            {'tipo_prestamo_id': 36, 'nombre': 'Préstamo Tipo 11 semanas', 'numero_semanas': 11, 'porcentaje_semanal': 0.1, 'incumplimientos_tolerados': 1, 'pena_incumplimiento': 1.0, 'limite_penalizaciones': 4, 'interes': 0.1},
+            {'tipo_prestamo_id': 37, 'nombre': 'Préstamo Tipo 13 semanas', 'numero_semanas': 13, 'porcentaje_semanal': 0.1, 'incumplimientos_tolerados': 1, 'pena_incumplimiento': 1.0, 'limite_penalizaciones': 4, 'interes': 0.3}
         ]
         for tipo in tipos_prestamo:
             new_tipo = TipoPrestamo(
@@ -136,7 +136,8 @@ def populate_data():
                 porcentaje_semanal=tipo['porcentaje_semanal'],
                 incumplimientos_tolerados=tipo['incumplimientos_tolerados'],
                 pena_incumplimiento=tipo['pena_incumplimiento'],
-                limite_penalizaciones=tipo['limite_penalizaciones']
+                limite_penalizaciones=tipo['limite_penalizaciones'],
+                interes=tipo['interes']
             )
             db.session.add(new_tipo)
         db.session.commit()

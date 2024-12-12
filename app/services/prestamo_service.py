@@ -22,8 +22,8 @@ class PrestamoService:
             return False
             
     @staticmethod
-    def calcular_utilidad(monto_prestamo, numero_semanas, porcentaje_semanal):
-        return monto_prestamo * (numero_semanas * porcentaje_semanal)
+    def calcular_utilidad(monto_prestamo, tipo_prestamo):
+        return (monto_prestamo * tipo_prestamo.interes) + monto_prestamo
 
     # Método para crear un nuevo préstamo
     def create_prestamo(self, data, user):
@@ -37,11 +37,8 @@ class PrestamoService:
                 if not tipo_prestamo:
                     raise ValueError("Tipo de préstamo no encontrado.")
 
-                numero_semanas = tipo_prestamo.numero_semanas  
-                porcentaje_semanal = tipo_prestamo.porcentaje_semanal
-
                 # Calcula la utilidad usando el método estático
-                monto_utilidad = self.calcular_utilidad(monto_prestamo, numero_semanas, porcentaje_semanal)
+                monto_utilidad = self.calcular_utilidad(monto_prestamo, tipo_prestamo)
 
                 # Crea el nuevo préstamo con el monto de utilidad calculado
                 new_prestamo = Prestamo(
@@ -87,6 +84,10 @@ class PrestamoService:
             prestamo.monto_prestamo = data.get('monto_prestamo', prestamo.monto_prestamo)
             prestamo.tipo_prestamo_id = data.get('tipo_prestamo_id', prestamo.tipo_prestamo_id)
             prestamo.aval_id = data.get('aval_id', prestamo.aval_id)
+            prestamo.completado = data.get('completado', prestamo.completado)
+            prestamo.renovacion = data.get('renovacion', prestamo.renovacion)
+            prestamo.semana_activa = data.get('semana_activa', prestamo.semana_activa)
+            
 
             db.session.commit()
             return prestamo
@@ -128,7 +129,11 @@ class PrestamoService:
                     'tipo_prestamo_id': prestamo.tipo_prestamo_id,
                     'tipo_prestamo_nombre': prestamo.tipo_prestamo.nombre,
                     'aval_id': prestamo.aval.cliente_id,
-                    'aval_nombre': f"{prestamo.aval.nombre} {prestamo.aval.apellido_paterno} {prestamo.aval.apellido_materno}"
+                    'aval_nombre': f"{prestamo.aval.nombre} {prestamo.aval.apellido_paterno} {prestamo.aval.apellido_materno}",
+                    'renovacion': prestamo.renovacion,
+                    'completado': prestamo.completado,
+                    'semana_activa': prestamo.semana_activa,
+                    'fecha_creacion': prestamo.fecha_inicio
                 })
 
             return {

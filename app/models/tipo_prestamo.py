@@ -9,6 +9,7 @@ class TipoPrestamo(db.Model):
     incumplimientos_tolerados = db.Column(db.Integer)
     pena_incumplimiento = db.Column(db.Numeric)
     limite_penalizaciones = db.Column(db.Integer)
+    interes = db.Column(db.Float)
 
     def serialize(self):
         return {
@@ -18,5 +19,6 @@ class TipoPrestamo(db.Model):
             'porcentaje_semanal': self.porcentaje_semanal,
             'incumplimientos_tolerados': self.incumplimientos_tolerados,
             'pena_incumplimiento': self.pena_incumplimiento,
-            'limite_penalizaciones': self.limite_penalizaciones
+            'limite_penalizaciones': self.limite_penalizaciones,
+            'interes': self.interes
         }

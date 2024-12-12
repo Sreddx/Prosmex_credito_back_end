@@ -38,9 +38,10 @@ class PagoService:
             
             if prestamo.verificar_pago_cubre_cobranza_ideal(new_pago):
                 print("Pago cubre cobranza ideal")
+                prestamo.actualizar_semana_activa(True)
             else:
                 print(f'Falta registrada para el préstamo {prestamo.prestamo_id}')
-
+            
             return new_pago
         except (ValueError, SQLAlchemyError) as e:
             db.session.rollback()
@@ -150,7 +151,7 @@ class PagoService:
                 joinedload(Prestamo.titular),
                 joinedload(Prestamo.tipo_prestamo),
                 joinedload(Prestamo.pagos)
-            ).filter(Prestamo.cliente_id.in_(id_titulares))
+            ).filter(Prestamo.cliente_id.in_(id_titulares), Prestamo.completado == False)
 
             total_items = prestamos_cliente_query.count()
             prestamos_cliente = prestamos_cliente_query.limit(per_page).offset((page - 1) * per_page).all()
@@ -159,7 +160,14 @@ class PagoService:
             for prestamo in prestamos_cliente:
                 titular = prestamo.titular
                 tipo_prestamo = prestamo.tipo_prestamo
+                
+                # Datos nuevos
+                semanas_completadas = prestamo.semana_activa
+                
                 numero_pagos = len(prestamo.pagos) if prestamo.pagos else 0
+                # Calcular cobranza ideal
+                cobranza_ideal_prestamo = prestamo.calcular_cobranza_ideal()
+                pagos_validos = len([pago for pago in prestamo.pagos if pago.monto_pagado > cobranza_ideal_prestamo])
                 
                 
                 semanas_que_debe = tipo_prestamo.numero_semanas  # Inicialmente igual al número de semanas
@@ -170,10 +178,9 @@ class PagoService:
                 faltas += len(faltas_registradas)
 
                 # Calcular semanas que debe sumando las faltas
-                semanas_que_debe += faltas - numero_pagos  # Número de semanas originales más faltas, menos pagos completados
+                semanas_que_debe += faltas - pagos_validos  # Número de semanas originales más faltas, menos pagos completados
                 
-                # Calcular cobranza ideal
-                cobranza_ideal_prestamo = prestamo.calcular_cobranza_ideal()
+               
                 
                 prestamos_list.append({
                     'GRUPO': grupo.nombre_grupo,
