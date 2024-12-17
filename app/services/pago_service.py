@@ -192,7 +192,10 @@ class PagoService:
                     'TIPO_PRESTAMO': prestamo.tipo_prestamo.nombre,
                     'NUMERO_PAGOS': numero_pagos,
                     'SEMANAS_QUE_DEBE': semanas_que_debe,
-                    'prestamo_id': prestamo.prestamo_id,
+                    'PRESTAMO_ID': prestamo.prestamo_id,
+                    'MONTO_UTILIDAD': prestamo.monto_utilidad,
+                    'RENOVACION': prestamo.renovacion,
+                    'COMPLETADO': prestamo.completado,
                 })
 
             total_pages = (total_items + per_page - 1) // per_page
