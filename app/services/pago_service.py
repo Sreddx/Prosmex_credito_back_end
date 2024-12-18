@@ -27,6 +27,7 @@ class PagoService:
 
             # Crear el pago
             new_pago = Pago(
+                fecha_pago=data.get('fecha_pago', datetime.datetime.now(pytz.timezone('America/Mexico_City'))),
                 monto_pagado=data['monto_pagado'],
                 prestamo_id=data['prestamo_id']
             )
@@ -164,10 +165,9 @@ class PagoService:
                 # Datos nuevos
                 semanas_completadas = prestamo.semana_activa
                 
-                numero_pagos = len(prestamo.pagos) if prestamo.pagos else 0
                 # Calcular cobranza ideal
                 cobranza_ideal_prestamo = prestamo.calcular_cobranza_ideal()
-                pagos_validos = len([pago for pago in prestamo.pagos if pago.monto_pagado > cobranza_ideal_prestamo])
+                pagos_validos = len([pago for pago in prestamo.pagos if pago.monto_pagado >= cobranza_ideal_prestamo])
                 
                 
                 semanas_que_debe = tipo_prestamo.numero_semanas  # Inicialmente igual al número de semanas
@@ -178,24 +178,24 @@ class PagoService:
                 faltas += len(faltas_registradas)
 
                 # Calcular semanas que debe sumando las faltas
-                semanas_que_debe += faltas - pagos_validos  # Número de semanas originales más faltas, menos pagos completados
-                
-               
+                semanas_que_debe = semanas_que_debe - semanas_completadas + faltas  # Número de semanas originales más faltas, menos pagos completados
                 
                 prestamos_list.append({
                     'GRUPO': grupo.nombre_grupo,
                     'CLIENTE': titular.getNombreCompleto(),
                     'AVAL': prestamo.aval.getNombreCompleto(),
                     'MONTO_PRÉSTAMO': float(prestamo.monto_prestamo),
+                    'MONTO_PRÉSTAMO_REAL' : float(prestamo.monto_prestamo_real) if prestamo.monto_prestamo_real else float(prestamo.monto_prestamo),
                     'FECHA_PRÉSTAMO': prestamo.fecha_inicio.strftime('%Y-%m-%d'),
                     'COBRANZA_IDEAL_SEMANAL': cobranza_ideal_prestamo,
                     'TIPO_PRESTAMO': prestamo.tipo_prestamo.nombre,
-                    'NUMERO_PAGOS': numero_pagos,
+                    'NUMERO_PAGOS': semanas_completadas,
                     'SEMANAS_QUE_DEBE': semanas_que_debe,
                     'PRESTAMO_ID': prestamo.prestamo_id,
                     'MONTO_UTILIDAD': prestamo.monto_utilidad,
                     'RENOVACION': prestamo.renovacion,
                     'COMPLETADO': prestamo.completado,
+                    'MONTO_PAGADO': prestamo.calcular_monto_pagado(),
                 })
 
             total_pages = (total_items + per_page - 1) // per_page

@@ -10,6 +10,7 @@ class Prestamo(db.Model):
     __tablename__ = 'prestamos'
     prestamo_id = db.Column(db.Integer, primary_key=True)
     monto_prestamo = db.Column(db.Numeric, nullable=False)
+    monto_prestamo_real = db.Column(db.Numeric, nullable=True)
     monto_utilidad = db.Column(db.Numeric, nullable=False)
     fecha_inicio = db.Column(db.DateTime, default=lambda: datetime.now(TIMEZONE), nullable=False) #Fecha para contar semanas de prestamos es a partir del lunes de la semana de que se pidio el prestamo
     cliente_id = db.Column(db.Integer, db.ForeignKey('clientes_avales.cliente_id'), nullable=False)
@@ -80,8 +81,7 @@ class Prestamo(db.Model):
         
         monto_faltante = prestamo_anterior.monto_utilidad - prestamo_anterior.calcular_monto_pagado()
         prestamo_anterior.completado = True
-        self.monto_prestamo -= float(monto_faltante)
-        self.monto_utilidad += float(monto_faltante)
+        self.monto_prestamo_real = float(self.monto_prestamo) - float(monto_faltante)
         db.session.commit()
     
     def actualizar_semana_activa(self, cubre_cobranza):
