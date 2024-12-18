@@ -80,8 +80,8 @@ class Prestamo(db.Model):
         
         monto_faltante = prestamo_anterior.monto_utilidad - prestamo_anterior.calcular_monto_pagado()
         prestamo_anterior.completado = True
-        self.monto_prestamo -= monto_faltante
-        self.monto_utilidad += monto_faltante
+        self.monto_prestamo -= float(monto_faltante)
+        self.monto_utilidad += float(monto_faltante)
         db.session.commit()
     
     def actualizar_semana_activa(self, cubre_cobranza):
@@ -139,7 +139,12 @@ class Prestamo(db.Model):
             'monto_utilidad': self.monto_utilidad,
             'tipo_prestamo_id': self.tipo_prestamo_id,
             'aval_id': self.aval_id,
-            'completado': self.completado
+            'completado': self.completado,
+            'status': self.status,
+            'renovacion': self.renovacion,
+            'semana_activa': self.semana_activa,
+            'monto_pagado': self.calcular_monto_pagado(),
+            'monto_restante': self.calcular_monto_restante()
         }
         
     # Funciones de operacion
