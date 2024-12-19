@@ -120,13 +120,16 @@ class Prestamo(db.Model):
             .join(ClienteAval, Prestamo.aval_id == ClienteAval.cliente_id)
             .filter(ClienteAval.grupo_id == cliente.grupo_id)
             .filter(Prestamo.aval_id == aval_id)
-            .filter(Prestamo.cliente_id != self.cliente_id)  # Ensure it's for a different client
-            .filter(Prestamo.prestamo_id != self.prestamo_id)  # Exclude the current loan (if updating)
+            .filter(Prestamo.prestamo_id != self.prestamo_id)
             .first()
         )
-        
+
         if existing_prestamo:
-            raise ValueError(f"El aval con ID {aval_id} ya está asignado a otro préstamo en el grupo del cliente.")
+            # Verifica si el préstamo existente es de otro cliente (diferente a self.cliente_id)
+            # o si es el mismo cliente pero el préstamo no está completado, entonces error.
+            if existing_prestamo.cliente_id != self.cliente_id:
+                raise ValueError(f"El aval con ID {aval_id} ya está asignado a otro préstamo activo en el grupo.")
+
         
         return aval_id
     

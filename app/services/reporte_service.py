@@ -50,7 +50,7 @@ class ReporteService:
         start_of_week = current_date - timedelta(days=current_date.weekday())
         end_of_week = start_of_week + timedelta(days=6)
 
-        # Subconsulta para pagos por grupo (cobranza real)
+        # Subconsulta para pagos por grupo (cobranza real) - sólo préstamos activos
         pagos_por_grupo = (
             db.session.query(
                 Grupo.grupo_id.label('grupo_id'),
@@ -61,27 +61,30 @@ class ReporteService:
             .join(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
             .filter(
                 Pago.fecha_pago >= start_of_week,
-                Pago.fecha_pago <= end_of_week
+                Pago.fecha_pago <= end_of_week,
+                Prestamo.completado == False  # sólo préstamos activos
             )
             .group_by(Grupo.grupo_id)
             .subquery()
         )
 
-        # Subconsulta para obtener el prestamo_id más reciente por cliente
+        # Subconsulta para obtener el prestamo_id más reciente por cliente - sólo el último préstamo activo
         latest_prestamo_subquery = (
             db.session.query(
                 Prestamo.cliente_id.label('cliente_id'),
                 func.max(Prestamo.prestamo_id).label('max_prestamo_id')
             )
+            .filter(Prestamo.completado == False)  # sólo préstamos activos
             .group_by(Prestamo.cliente_id)
             .subquery()
         )
 
-        # Subconsulta para prestamo_papel por cliente
+        # Subconsulta para prestamo_papel (monto original) y monto_real_calculado por cliente
         prestamo_papel_por_cliente = (
             db.session.query(
                 Prestamo.cliente_id.label('cliente_id'),
-                Prestamo.monto_prestamo.label('prestamo_papel')
+                Prestamo.monto_prestamo.label('prestamo_papel'),  # Monto original del préstamo activo
+                func.coalesce(Prestamo.monto_prestamo_real, Prestamo.monto_prestamo).label('monto_real_calculado')
             )
             .join(
                 latest_prestamo_subquery,
@@ -101,7 +104,7 @@ class ReporteService:
             .subquery()
         )
 
-        # Subconsulta para adeudo anterior por cliente
+        # Subconsulta para adeudo anterior por cliente (préstamos anteriores, no el último)
         adeudo_anterior_por_cliente = (
             db.session.query(
                 Prestamo.cliente_id.label('cliente_id'),
@@ -118,6 +121,7 @@ class ReporteService:
                     db.session.query(
                         func.max(Prestamo.prestamo_id)
                     )
+                    .filter(Prestamo.completado == False)  # considerar también sólo el último activo?
                     .group_by(Prestamo.cliente_id)
                 )
             )
@@ -125,7 +129,7 @@ class ReporteService:
             .subquery()
         )
 
-        # Subconsulta para cobranza ideal por grupo
+        # Subconsulta para cobranza ideal por grupo - sólo préstamos activos
         cobranza_ideal_por_grupo = (
             db.session.query(
                 Grupo.grupo_id.label('grupo_id'),
@@ -134,11 +138,12 @@ class ReporteService:
             .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
             .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
             .join(TipoPrestamo, Prestamo.tipo_prestamo_id == TipoPrestamo.tipo_prestamo_id)
+            .filter(Prestamo.completado == False)  # sólo activos
             .group_by(Grupo.grupo_id)
             .subquery()
         )
 
-        # Subconsulta para número de créditos por grupo
+        # Subconsulta para número de créditos por grupo - sólo préstamos activos
         numero_de_creditos_por_grupo = (
             db.session.query(
                 Grupo.grupo_id.label('grupo_id'),
@@ -146,10 +151,12 @@ class ReporteService:
             )
             .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
             .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .filter(Prestamo.completado == False)  # sólo activos
             .group_by(Grupo.grupo_id)
             .subquery()
         )
-        # Subconsulta para obtener numero de prestamos activos por grupo
+
+        # Subconsulta para obtener numero de prestamos activos por grupo (ya filtra completado == False)
         numero_de_prestamos_activos_por_grupo = (
             db.session.query(
                 Grupo.grupo_id.label('grupo_id'),
@@ -162,7 +169,7 @@ class ReporteService:
             .subquery()
         )
 
-        # Subconsulta monto morosidad. Suma de monto restante por cliente por grupo
+        # Subconsulta monto morosidad - sólo préstamos activos
         morosidad_por_grupo = (
             db.session.query(
                 Grupo.grupo_id.label('grupo_id'),
@@ -176,10 +183,11 @@ class ReporteService:
                 total_pagado_por_prestamo,
                 Prestamo.prestamo_id == total_pagado_por_prestamo.c.prestamo_id
             )
+            .filter(Prestamo.completado == False)  # sólo activos
             .group_by(Grupo.grupo_id)
             .subquery()
         )
-        
+
         # Construcción de la consulta principal
         query = db.session.query(
             Grupo.grupo_id,
@@ -195,7 +203,7 @@ class ReporteService:
             func.coalesce(
                 func.sum(
                     func.distinct(
-                        prestamo_papel_por_cliente.c.prestamo_papel - func.coalesce(adeudo_anterior_por_cliente.c.adeudo_anterior, 0)
+                        (prestamo_papel_por_cliente.c.monto_real_calculado - func.coalesce(adeudo_anterior_por_cliente.c.adeudo_anterior, 0))
                     )
                 ), 0
             ).label('prestamo_real'),
@@ -263,8 +271,6 @@ class ReporteService:
             numero_de_creditos = row.numero_de_creditos or 0
             numero_de_prestamos_activos = row.numero_de_prestamos_activos or 0
 
-            # Cálculo de la morosidad basado en la diferencia entre cobranza ideal y pagos reales
-            # Morosidad es suma de sobrantes de un grupo dada las fallas por prestamo
             morosidad_monto = float(row.morosidad or 0)
             morosidad_porcentaje = (morosidad_monto / cobranza_ideal) if cobranza_ideal != 0 else None
             porcentaje_prestamo = (prestamo_real / cobranza_real) if cobranza_real != 0 else None
@@ -297,6 +303,7 @@ class ReporteService:
             'per_page': per_page,
             'total_items': total_items
         }
+
 
     @staticmethod
     def obtener_totales():
