@@ -6,6 +6,7 @@ from flask import current_app as app
 from sqlalchemy.exc import SQLAlchemyError
 from app.constants import TIMEZONE
 from datetime import datetime
+from app.services.falta_service import FaltaService  # Importar el servicio de faltas
 
 class PrestamoService:
     def __init__(self, prestamo_id=None):
@@ -119,13 +120,30 @@ class PrestamoService:
 
             prestamos = []
             for prestamo in lista_obj_prestamos:
+                tipo_prestamo = prestamo.tipo_prestamo
+
+                # Datos nuevos
+                semanas_completadas = prestamo.semana_activa
+
+                semanas_que_debe = tipo_prestamo.numero_semanas  # Inicialmente igual al número de semanas
+                faltas = 0
+
+                # Obtener las faltas registradas para el préstamo
+                faltas_registradas = FaltaService.get_faltas_by_prestamo_id(prestamo.prestamo_id)
+                faltas += len(faltas_registradas)
+
+                # Calcular semanas que debe sumando las faltas
+                semanas_que_debe = semanas_que_debe - semanas_completadas + faltas  # Número de semanas originales más faltas, menos pagos completados
+
                 prestamos.append({
                     'prestamo_id': prestamo.prestamo_id,
                     'cliente_id': prestamo.titular.cliente_id,
                     'cliente_nombre': f"{prestamo.titular.nombre} {prestamo.titular.apellido_paterno} {prestamo.titular.apellido_materno}",
                     'fecha_inicio': prestamo.fecha_inicio,
-                    'monto_prestamo': prestamo.monto_prestamo,
-                    'monto_utilidad': prestamo.monto_utilidad,
+                    'monto_prestamo': float(prestamo.monto_prestamo),
+                    'monto_prestamo_real': float(prestamo.monto_prestamo_real) if prestamo.monto_prestamo_real else float(prestamo.monto_prestamo),
+                    'monto_utilidad': float(prestamo.monto_utilidad),
+                    'monto_pagado': float(prestamo.calcular_monto_pagado()),
                     'tipo_prestamo_id': prestamo.tipo_prestamo_id,
                     'tipo_prestamo_nombre': prestamo.tipo_prestamo.nombre,
                     'aval_id': prestamo.aval.cliente_id,
@@ -133,7 +151,9 @@ class PrestamoService:
                     'renovacion': prestamo.renovacion,
                     'completado': prestamo.completado,
                     'semana_activa': prestamo.semana_activa,
-                    'fecha_creacion': prestamo.fecha_inicio
+                    'fecha_creacion': prestamo.fecha_inicio,
+                    'numero_pagos': semanas_completadas,
+                    'semanas_que_debe': semanas_que_debe,
                 })
 
             return {
