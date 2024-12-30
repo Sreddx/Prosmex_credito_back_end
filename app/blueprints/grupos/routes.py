@@ -70,6 +70,7 @@ def delete_grupo(grupo_id):
 def get_prestamo_real_papel_grupo(grupo_id):
     def func():
         service = PrestamoService()
-        prestamos = service.get_prestamo_real_y_papel_by_grupo(grupo_id)
-        return create_response(prestamos, 200)
+        real,papel = service.get_prestamo_real_y_papel_by_grupo(grupo_id)
+        return create_response({'prestamo_real': real, 'prestamo_papel': papel}, 200)
+        
     return handle_exceptions(func)
