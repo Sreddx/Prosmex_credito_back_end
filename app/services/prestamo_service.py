@@ -187,5 +187,20 @@ class PrestamoService:
         except SQLAlchemyError as e:
             app.logger.error(f"Error listando tipos de préstamo: {str(e)}")
             raise ValueError("No se pudo obtener la lista de tipos de préstamo.")
-        
+    
+    def get_prestamo_real_y_papel_by_grupo(self, grupo_id):
+        try:
+            clientes_grupo = ClienteAval.query.filter_by(grupo_id=grupo_id).all()
+            # Obtener todos los prestamos de cada cliente en el grupo y que esten activos
+            prestamo_real_grupo = 0
+            prestamo_papel_grupo = 0
+            for cliente in clientes_grupo:
+                prestamo_real_grupo += cliente.calcular_prestamo_real()
+                prestamo_papel_grupo += cliente.calcular_prestamo_papel()
+            return prestamo_real_grupo, prestamo_papel_grupo
+            
+                
+        except SQLAlchemyError as e:
+            app.logger.error(f"Error obteniendo préstamos reales y papeles por grupo: {str(e)}")
+            raise ValueError("No se pudo obtener los préstamos reales por grupo.")
     

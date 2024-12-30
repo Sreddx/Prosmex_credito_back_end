@@ -1,6 +1,7 @@
 from flask import Blueprint, request
 from app.services import GrupoService
 from app.blueprints.helpers import create_response, make_error_response, handle_exceptions, validate_fields
+from app.services.prestamo_service import PrestamoService
 
 
 grupos_blueprint = Blueprint('grupos', __name__, url_prefix='/grupos')
@@ -63,4 +64,12 @@ def delete_grupo(grupo_id):
         service = GrupoService(grupo_id)
         service.delete_grupo()
         return create_response({'message': 'Grupo eliminado correctamente'}, 200)
+    return handle_exceptions(func)
+
+@grupos_blueprint.route('/<int:grupo_id>/datos-prestamos', methods=['GET'])
+def get_prestamo_real_papel_grupo(grupo_id):
+    def func():
+        service = PrestamoService()
+        prestamos = service.get_prestamo_real_y_papel_by_grupo(grupo_id)
+        return create_response(prestamos, 200)
     return handle_exceptions(func)
