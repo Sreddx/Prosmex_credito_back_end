@@ -139,7 +139,7 @@ class PrestamoService:
                     'prestamo_id': prestamo.prestamo_id,
                     'cliente_id': prestamo.titular.cliente_id,
                     'cliente_nombre': f"{prestamo.titular.nombre} {prestamo.titular.apellido_paterno} {prestamo.titular.apellido_materno}",
-                    'fecha_inicio': prestamo.fecha_inicio,
+                    'fecha_inicio': prestamo.fecha_inicio.strftime('%Y-%m-%d'),
                     'monto_prestamo': float(prestamo.monto_prestamo),
                     'monto_prestamo_real': float(prestamo.monto_prestamo_real) if prestamo.monto_prestamo_real else float(prestamo.monto_prestamo),
                     'monto_utilidad': float(prestamo.monto_utilidad),
