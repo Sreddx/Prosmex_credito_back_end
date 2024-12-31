@@ -165,8 +165,26 @@ class ClienteAval(db.Model):
         prestamo_papel = self.prestamos_como_titular[-1].monto_prestamo if self.prestamos_como_titular else 0
         return prestamo_papel
     
+    def calcular_monto_restante_prestamo_actual(self):
+        """Calcula el adeudo del cliente usando el prestamo anterior al ultimo que hubo"""
+        prestamos_cliente = self.prestamos_como_titular
+        
+        num_prestamos = len(prestamos_cliente)
+        if num_prestamos == 1:
+            return 0
+        # print(f'Numero de prestamos: {num_prestamos}')
+        # monto_restante_ultimo_prestamo = prestamos_cliente[num_prestamos-2].calcular_monto_restante() if len(prestamos_cliente) > 1 else 0
+        # print(f'Monto restante ultimo prestamo: {monto_restante_ultimo_prestamo}')
+        monto_restante = self.prestamos_como_titular[num_prestamos-2].calcular_monto_restante() if self.prestamos_como_titular else 0
+        return monto_restante
+    
+    
     def calcular_prestamo_real(self):
         """Calcula el monto real prestado al cliente."""
         prestamo_papel = self.calcular_prestamo_papel() 
-        prestamo_real = prestamo_papel - self.calcular_adeudo_cliente_sin_adeudo_prestamo_actual()
+        print(f'Prestamo papel: {prestamo_papel}')
+        adeudo = self.calcular_monto_restante_prestamo_actual()
+        print(f'Adeudo: {adeudo}')
+        prestamo_real = prestamo_papel - adeudo
         return prestamo_real
+    

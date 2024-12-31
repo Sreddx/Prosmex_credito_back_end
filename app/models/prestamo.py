@@ -204,6 +204,6 @@ class Prestamo(db.Model):
     
     def calcular_monto_restante(self):
         """Calcula el monto restante por pagar del cliente."""
-        monto_restante = self.monto_prestamo- self.calcular_monto_pagado()
+        monto_restante = self.monto_utilidad- self.calcular_monto_pagado()
         return monto_restante
 

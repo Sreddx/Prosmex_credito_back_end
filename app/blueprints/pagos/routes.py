@@ -16,16 +16,22 @@ def list_pagos():
 @pagos_blueprint.route('/', methods=['POST'])
 def create_pago():
     data = request.get_json()
-    required_fields = ['monto_pagado', 'prestamo_id'] 
-    missing_fields = validate_fields(data, required_fields)
-    if missing_fields:
-        return make_error_response(f'Faltan campos requeridos: {", ".join(missing_fields)}', 400)
+    if len(data) == 1:
+        required_fields = ['monto_pagado', 'prestamo_id'] 
+        missing_fields = validate_fields(data, required_fields)
+        if missing_fields:
+            return make_error_response(f'Faltan campos requeridos: {", ".join(missing_fields)}', 400)
 
     def func():
         service = PagoService()
         new_pago = service.create_pago(data)
-        pago_data = new_pago.serialize()
-        return create_response({'pago': pago_data}, 201)
+        # if new pago is a list of objects serialize each and add to response
+        if isinstance(new_pago, list):
+            pagos_data = [p.serialize() for p in new_pago]
+            return create_response({'pagos': pagos_data}, 201)
+        else:
+            pago_data = new_pago.serialize()
+            return create_response({'pago': pago_data}, 201)
     return handle_exceptions(func)
 
 

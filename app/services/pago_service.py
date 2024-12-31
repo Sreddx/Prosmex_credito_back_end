@@ -14,12 +14,39 @@ class PagoService:
 
     def create_pago(self, data):
         try:
-            # Validar campos requeridos
-            required_fields = ['monto_pagado', 'prestamo_id']
-            missing_fields = [field for field in required_fields if field not in data]
-            if missing_fields:
-                raise ValueError(f"Faltan campos requeridos: {', '.join(missing_fields)}")
+            # # Validar campos requeridos
+            # required_fields = ['monto_pagado', 'prestamo_id']
+            # missing_fields = [field for field in required_fields if field not in data]
+            # if missing_fields:
+            #     raise ValueError(f"Faltan campos requeridos: {', '.join(missing_fields)}")
+            
+            if len(data) > 1:
+                lista_pagos_hechos=[]
+                for pago in data:
+                    # Validar prestamo al que se va a hacer el pago
+                    # Asegurarse de que el préstamo exista
+                    prestamo = Prestamo.query.get(pago['prestamo_id'])
+                    if not prestamo:
+                        raise ValueError("El préstamo especificado no existe.")
+                    # Crear el pago
+                    new_pago = Pago(
+                        fecha_pago=pago.get('fecha_pago', datetime.datetime.now(pytz.timezone('America/Mexico_City'))),
+                        monto_pagado=pago['monto_pagado'],
+                        prestamo_id=pago['prestamo_id']
+                    )
+                    db.session.add(new_pago)
+                    db.session.commit()
 
+                    # Verificar si el préstamo se ha completado
+                    prestamo.verificar_completado()
+                    
+                    if prestamo.verificar_pago_cubre_cobranza_ideal(new_pago):
+                        print("Pago cubre cobranza ideal")
+                        prestamo.actualizar_semana_activa(True)
+                    else:
+                        print(f'Falta registrada para el préstamo {prestamo.prestamo_id}')
+                    lista_pagos_hechos.append(new_pago)
+                return lista_pagos_hechos
             # Asegurarse de que el préstamo exista
             prestamo = Prestamo.query.get(data['prestamo_id'])
             if not prestamo:

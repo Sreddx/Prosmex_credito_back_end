@@ -135,7 +135,8 @@ class ReporteService:
         for row in results:
             # Obtener los valores de prestamo_real y prestamo_papel desde PrestamoService
             prestamo_real, prestamo_papel = PrestamoService().get_prestamo_real_y_papel_by_grupo(row.grupo_id)
-
+            print(f'Prestamo real: {prestamo_real}, Prestamo papel: {prestamo_papel}, Grupo: {row.grupo_id}')
+            
             # Obtener el bono para cada grupo (si aplica)
             bono_data = ReporteService.calcular_bono_por_grupo(row.grupo_id)
             bono = bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
