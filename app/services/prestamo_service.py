@@ -197,7 +197,7 @@ class PrestamoService:
             for cliente in clientes_grupo:
                 prestamo_real_grupo += cliente.calcular_prestamo_real()
                 prestamo_papel_grupo += cliente.calcular_prestamo_papel()
-            return prestamo_real_grupo, prestamo_papel_grupo
+            return float(prestamo_real_grupo), float(prestamo_papel_grupo)
             
                 
         except SQLAlchemyError as e:

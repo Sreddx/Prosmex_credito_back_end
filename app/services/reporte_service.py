@@ -62,70 +62,9 @@ class ReporteService:
             .filter(
                 Pago.fecha_pago >= start_of_week,
                 Pago.fecha_pago <= end_of_week,
-                Prestamo.completado == False  # sólo préstamos activos
+                Prestamo.completado == False
             )
             .group_by(Grupo.grupo_id)
-            .subquery()
-        )
-
-        # Subconsulta para obtener el prestamo_id más reciente por cliente - sólo el último préstamo activo
-        latest_prestamo_subquery = (
-            db.session.query(
-                Prestamo.cliente_id.label('cliente_id'),
-                func.max(Prestamo.prestamo_id).label('max_prestamo_id')
-            )
-            .filter(Prestamo.completado == False)  # sólo préstamos activos
-            .group_by(Prestamo.cliente_id)
-            .subquery()
-        )
-
-        # Subconsulta para prestamo_papel (monto original) y monto_real_calculado por cliente
-        prestamo_papel_por_cliente = (
-            db.session.query(
-                Prestamo.cliente_id.label('cliente_id'),
-                Prestamo.monto_prestamo.label('prestamo_papel'),  # Monto original del préstamo activo
-                func.coalesce(Prestamo.monto_prestamo_real, Prestamo.monto_prestamo).label('monto_real_calculado')
-            )
-            .join(
-                latest_prestamo_subquery,
-                (Prestamo.cliente_id == latest_prestamo_subquery.c.cliente_id) &
-                (Prestamo.prestamo_id == latest_prestamo_subquery.c.max_prestamo_id)
-            )
-            .subquery()
-        )
-
-        # Subconsulta para total pagado por prestamo
-        total_pagado_por_prestamo = (
-            db.session.query(
-                Pago.prestamo_id.label('prestamo_id'),
-                func.sum(Pago.monto_pagado).label('total_pagado')
-            )
-            .group_by(Pago.prestamo_id)
-            .subquery()
-        )
-
-        # Subconsulta para adeudo anterior por cliente (préstamos anteriores, no el último)
-        adeudo_anterior_por_cliente = (
-            db.session.query(
-                Prestamo.cliente_id.label('cliente_id'),
-                func.sum(
-                    Prestamo.monto_prestamo - func.coalesce(total_pagado_por_prestamo.c.total_pagado, 0)
-                ).label('adeudo_anterior')
-            )
-            .outerjoin(
-                total_pagado_por_prestamo,
-                Prestamo.prestamo_id == total_pagado_por_prestamo.c.prestamo_id
-            )
-            .filter(
-                ~Prestamo.prestamo_id.in_(
-                    db.session.query(
-                        func.max(Prestamo.prestamo_id)
-                    )
-                    .filter(Prestamo.completado == False)  # considerar también sólo el último activo?
-                    .group_by(Prestamo.cliente_id)
-                )
-            )
-            .group_by(Prestamo.cliente_id)
             .subquery()
         )
 
@@ -138,52 +77,7 @@ class ReporteService:
             .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
             .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
             .join(TipoPrestamo, Prestamo.tipo_prestamo_id == TipoPrestamo.tipo_prestamo_id)
-            .filter(Prestamo.completado == False)  # sólo activos
-            .group_by(Grupo.grupo_id)
-            .subquery()
-        )
-
-        # Subconsulta para número de créditos por grupo - sólo préstamos activos
-        numero_de_creditos_por_grupo = (
-            db.session.query(
-                Grupo.grupo_id.label('grupo_id'),
-                func.count(Prestamo.prestamo_id).label('numero_de_creditos')
-            )
-            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
-            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
-            .filter(Prestamo.completado == False)  # sólo activos
-            .group_by(Grupo.grupo_id)
-            .subquery()
-        )
-
-        # Subconsulta para obtener numero de prestamos activos por grupo (ya filtra completado == False)
-        numero_de_prestamos_activos_por_grupo = (
-            db.session.query(
-                Grupo.grupo_id.label('grupo_id'),
-                func.count(Prestamo.prestamo_id).label('numero_de_prestamos_activos')
-            )
-            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
-            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
             .filter(Prestamo.completado == False)
-            .group_by(Grupo.grupo_id)
-            .subquery()
-        )
-
-        # Subconsulta monto morosidad - sólo préstamos activos
-        morosidad_por_grupo = (
-            db.session.query(
-                Grupo.grupo_id.label('grupo_id'),
-                func.sum(func.coalesce(
-                    Prestamo.monto_prestamo - func.coalesce(total_pagado_por_prestamo.c.total_pagado, 0), 0
-                )).label('morosidad')
-            )
-            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
-            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
-            .outerjoin(
-                total_pagado_por_prestamo,
-                Prestamo.prestamo_id == total_pagado_por_prestamo.c.prestamo_id
-            )
-            .filter(Prestamo.completado == False)  # sólo activos
             .group_by(Grupo.grupo_id)
             .subquery()
         )
@@ -198,18 +92,7 @@ class ReporteService:
             Ruta.nombre_ruta.label('ruta'),
             Grupo.nombre_grupo.label('grupo'),
             func.coalesce(cobranza_ideal_por_grupo.c.cobranza_ideal, 0).label('cobranza_ideal'),
-            func.coalesce(pagos_por_grupo.c.total_pagos, 0).label('cobranza_real'),
-            func.coalesce(func.sum(func.distinct(prestamo_papel_por_cliente.c.prestamo_papel)), 0).label('prestamo_papel'),
-            func.coalesce(
-                func.sum(
-                    func.distinct(
-                        (prestamo_papel_por_cliente.c.monto_real_calculado - func.coalesce(adeudo_anterior_por_cliente.c.adeudo_anterior, 0))
-                    )
-                ), 0
-            ).label('prestamo_real'),
-            func.coalesce(numero_de_creditos_por_grupo.c.numero_de_creditos, 0).label('numero_de_creditos'),
-            func.coalesce(numero_de_prestamos_activos_por_grupo.c.numero_de_prestamos_activos, 0).label('numero_de_prestamos_activos'),
-            func.coalesce(morosidad_por_grupo.c.morosidad, 0).label('morosidad')
+            func.coalesce(pagos_por_grupo.c.total_pagos, 0).label('cobranza_real')
         ).select_from(Grupo)
 
         # Joins necesarios
@@ -217,14 +100,8 @@ class ReporteService:
         query = query.outerjoin(usuarios_supervisor, Ruta.usuario_id_supervisor == usuarios_supervisor.id)
         query = query.outerjoin(usuarios_gerente, Ruta.usuario_id_gerente == usuarios_gerente.id)
         query = query.outerjoin(usuarios_titular, Grupo.usuario_id_titular == usuarios_titular.id)
-        query = query.outerjoin(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
-        query = query.outerjoin(prestamo_papel_por_cliente, prestamo_papel_por_cliente.c.cliente_id == ClienteAval.cliente_id)
-        query = query.outerjoin(adeudo_anterior_por_cliente, adeudo_anterior_por_cliente.c.cliente_id == ClienteAval.cliente_id)
         query = query.outerjoin(pagos_por_grupo, pagos_por_grupo.c.grupo_id == Grupo.grupo_id)
         query = query.outerjoin(cobranza_ideal_por_grupo, cobranza_ideal_por_grupo.c.grupo_id == Grupo.grupo_id)
-        query = query.outerjoin(numero_de_creditos_por_grupo, numero_de_creditos_por_grupo.c.grupo_id == Grupo.grupo_id)
-        query = query.outerjoin(numero_de_prestamos_activos_por_grupo, numero_de_prestamos_activos_por_grupo.c.grupo_id == Grupo.grupo_id)
-        query = query.outerjoin(morosidad_por_grupo, morosidad_por_grupo.c.grupo_id == Grupo.grupo_id)
 
         # Aplicar filtros si existen
         if filters:
@@ -243,10 +120,7 @@ class ReporteService:
             Ruta.nombre_ruta,
             Grupo.nombre_grupo,
             pagos_por_grupo.c.total_pagos,
-            cobranza_ideal_por_grupo.c.cobranza_ideal,
-            numero_de_creditos_por_grupo.c.numero_de_creditos,
-            numero_de_prestamos_activos_por_grupo.c.numero_de_prestamos_activos,
-            morosidad_por_grupo.c.morosidad
+            cobranza_ideal_por_grupo.c.cobranza_ideal
         )
 
         # Obtener el total de resultados antes de la paginación
@@ -259,6 +133,9 @@ class ReporteService:
         results = paginated_query.all()
         report_data = []
         for row in results:
+            # Obtener los valores de prestamo_real y prestamo_papel desde PrestamoService
+            prestamo_real, prestamo_papel = PrestamoService().get_prestamo_real_y_papel_by_grupo(row.grupo_id)
+
             # Obtener el bono para cada grupo (si aplica)
             bono_data = ReporteService.calcular_bono_por_grupo(row.grupo_id)
             bono = bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
@@ -266,12 +143,8 @@ class ReporteService:
             # Cálculos adicionales
             cobranza_ideal = float(row.cobranza_ideal or 0)
             cobranza_real = float(row.cobranza_real or 0)
-            prestamo_real = float(row.prestamo_real or 0)
-            prestamo_papel = float(row.prestamo_papel or 0)
-            numero_de_creditos = row.numero_de_creditos or 0
-            numero_de_prestamos_activos = row.numero_de_prestamos_activos or 0
 
-            morosidad_monto = float(row.morosidad or 0)
+            morosidad_monto = cobranza_ideal - cobranza_real if cobranza_ideal else 0
             morosidad_porcentaje = (morosidad_monto / cobranza_ideal) if cobranza_ideal != 0 else None
             porcentaje_prestamo = (prestamo_real / cobranza_real) if cobranza_real != 0 else None
             sobrante = cobranza_real - prestamo_papel - bono
@@ -288,12 +161,10 @@ class ReporteService:
                 'cobranza_real': cobranza_real,
                 'prestamo_papel': prestamo_papel,
                 'prestamo_real': prestamo_real,
-                'numero_de_creditos': numero_de_creditos,
                 'morosidad_monto': morosidad_monto,
                 'morosidad_porcentaje': morosidad_porcentaje,
                 'porcentaje_prestamo': porcentaje_prestamo,
                 'sobrante': sobrante,
-                'numero_de_prestamos': numero_de_prestamos_activos,
                 'bono': bono
             })
 
@@ -303,7 +174,6 @@ class ReporteService:
             'per_page': per_page,
             'total_items': total_items
         }
-
 
     @staticmethod
     def obtener_totales():
