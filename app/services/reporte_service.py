@@ -82,6 +82,31 @@ class ReporteService:
             .subquery()
         )
 
+        # Subconsulta para número de créditos por grupo
+        numero_de_creditos_por_grupo = (
+            db.session.query(
+                Grupo.grupo_id.label('grupo_id'),
+                func.count(Prestamo.prestamo_id).label('numero_de_creditos')
+            )
+            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
+            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .group_by(Grupo.grupo_id)
+            .subquery()
+        )
+
+        # Subconsulta para número de préstamos activos por grupo
+        numero_de_prestamos_activos_por_grupo = (
+            db.session.query(
+                Grupo.grupo_id.label('grupo_id'),
+                func.count(Prestamo.prestamo_id).label('numero_de_prestamos_activos')
+            )
+            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
+            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
+            .filter(Prestamo.completado == False)
+            .group_by(Grupo.grupo_id)
+            .subquery()
+        )
+
         # Construcción de la consulta principal
         query = db.session.query(
             Grupo.grupo_id,
@@ -92,7 +117,9 @@ class ReporteService:
             Ruta.nombre_ruta.label('ruta'),
             Grupo.nombre_grupo.label('grupo'),
             func.coalesce(cobranza_ideal_por_grupo.c.cobranza_ideal, 0).label('cobranza_ideal'),
-            func.coalesce(pagos_por_grupo.c.total_pagos, 0).label('cobranza_real')
+            func.coalesce(pagos_por_grupo.c.total_pagos, 0).label('cobranza_real'),
+            func.coalesce(numero_de_creditos_por_grupo.c.numero_de_creditos, 0).label('numero_de_creditos'),
+            func.coalesce(numero_de_prestamos_activos_por_grupo.c.numero_de_prestamos_activos, 0).label('prestamos_activos')
         ).select_from(Grupo)
 
         # Joins necesarios
@@ -102,6 +129,8 @@ class ReporteService:
         query = query.outerjoin(usuarios_titular, Grupo.usuario_id_titular == usuarios_titular.id)
         query = query.outerjoin(pagos_por_grupo, pagos_por_grupo.c.grupo_id == Grupo.grupo_id)
         query = query.outerjoin(cobranza_ideal_por_grupo, cobranza_ideal_por_grupo.c.grupo_id == Grupo.grupo_id)
+        query = query.outerjoin(numero_de_creditos_por_grupo, numero_de_creditos_por_grupo.c.grupo_id == Grupo.grupo_id)
+        query = query.outerjoin(numero_de_prestamos_activos_por_grupo, numero_de_prestamos_activos_por_grupo.c.grupo_id == Grupo.grupo_id)
 
         # Aplicar filtros si existen
         if filters:
@@ -120,7 +149,9 @@ class ReporteService:
             Ruta.nombre_ruta,
             Grupo.nombre_grupo,
             pagos_por_grupo.c.total_pagos,
-            cobranza_ideal_por_grupo.c.cobranza_ideal
+            cobranza_ideal_por_grupo.c.cobranza_ideal,
+            numero_de_creditos_por_grupo.c.numero_de_creditos,
+            numero_de_prestamos_activos_por_grupo.c.numero_de_prestamos_activos
         )
 
         # Obtener el total de resultados antes de la paginación
@@ -135,8 +166,7 @@ class ReporteService:
         for row in results:
             # Obtener los valores de prestamo_real y prestamo_papel desde PrestamoService
             prestamo_real, prestamo_papel = PrestamoService().get_prestamo_real_y_papel_by_grupo(row.grupo_id)
-            print(f'Prestamo real: {prestamo_real}, Prestamo papel: {prestamo_papel}, Grupo: {row.grupo_id}')
-            
+
             # Obtener el bono para cada grupo (si aplica)
             bono_data = ReporteService.calcular_bono_por_grupo(row.grupo_id)
             bono = bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
@@ -166,7 +196,9 @@ class ReporteService:
                 'morosidad_porcentaje': morosidad_porcentaje,
                 'porcentaje_prestamo': porcentaje_prestamo,
                 'sobrante': sobrante,
-                'bono': bono
+                'bono': bono,
+                'numero_de_creditos': row.numero_de_creditos,
+                'prestamos_activos': row.prestamos_activos
             })
 
         return {
