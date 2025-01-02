@@ -20,6 +20,8 @@ class PagoService:
             # if missing_fields:
             #     raise ValueError(f"Faltan campos requeridos: {', '.join(missing_fields)}")
             
+            #print(f'Length data: {len(data)}')
+
             if len(data) > 1:
                 lista_pagos_hechos=[]
                 for pago in data:
@@ -48,29 +50,31 @@ class PagoService:
                     lista_pagos_hechos.append(new_pago)
                 return lista_pagos_hechos
             # Asegurarse de que el préstamo exista
-            prestamo = Prestamo.query.get(data['prestamo_id'])
-            if not prestamo:
-                raise ValueError("El préstamo especificado no existe.")
-
-            # Crear el pago
-            new_pago = Pago(
-                fecha_pago=data.get('fecha_pago', datetime.datetime.now(pytz.timezone('America/Mexico_City'))),
-                monto_pagado=data['monto_pagado'],
-                prestamo_id=data['prestamo_id']
-            )
-            db.session.add(new_pago)
-            db.session.commit()
-
-            # Verificar si el préstamo se ha completado
-            prestamo.verificar_completado()
-            
-            if prestamo.verificar_pago_cubre_cobranza_ideal(new_pago):
-                print("Pago cubre cobranza ideal")
-                prestamo.actualizar_semana_activa(True)
             else:
-                print(f'Falta registrada para el préstamo {prestamo.prestamo_id}')
-            
-            return new_pago
+                data = data[0]
+                prestamo = Prestamo.query.get(data['prestamo_id'])
+                if not prestamo:
+                    raise ValueError("El préstamo especificado no existe.")
+
+                # Crear el pago
+                new_pago = Pago(
+                    fecha_pago=data.get('fecha_pago', datetime.datetime.now(pytz.timezone('America/Mexico_City'))),
+                    monto_pagado=data['monto_pagado'],
+                    prestamo_id=data['prestamo_id']
+                )
+                db.session.add(new_pago)
+                db.session.commit()
+
+                # Verificar si el préstamo se ha completado
+                prestamo.verificar_completado()
+                
+                if prestamo.verificar_pago_cubre_cobranza_ideal(new_pago):
+                    print("Pago cubre cobranza ideal")
+                    prestamo.actualizar_semana_activa(True)
+                else:
+                    print(f'Falta registrada para el préstamo {prestamo.prestamo_id}')
+                
+                return new_pago
         except (ValueError, SQLAlchemyError) as e:
             db.session.rollback()
             app.logger.error(f"Error creando pago: {str(e)}")

@@ -16,9 +16,11 @@ def list_pagos():
 @pagos_blueprint.route('/', methods=['POST'])
 def create_pago():
     data = request.get_json()
+    #print(f'Create Pago Data: {data}')
     if len(data) == 1:
+        print(data[0])
         required_fields = ['monto_pagado', 'prestamo_id'] 
-        missing_fields = validate_fields(data, required_fields)
+        missing_fields = validate_fields(data[0], required_fields)
         if missing_fields:
             return make_error_response(f'Faltan campos requeridos: {", ".join(missing_fields)}', 400)
 
