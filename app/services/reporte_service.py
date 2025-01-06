@@ -399,7 +399,7 @@ class ReporteService:
         sobrante_por_prestamo = (
             db.session.query(
                 Prestamo.prestamo_id,
-                (func.coalesce(func.sum(Pago.monto_pagado), 0) - Prestamo.monto_prestamo).label('sobrante')
+                (func.coalesce(func.sum(Pago.monto_pagado), 0) - Prestamo.monto_utilidad).label('sobrante')
             )
             .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
             .join(Grupo, ClienteAval.grupo_id == Grupo.grupo_id)
@@ -408,11 +408,18 @@ class ReporteService:
             .group_by(Prestamo.prestamo_id)
         ).subquery()
 
+        # Imprimir los resultados de la consulta sobrante_por_prestamo
+        results = db.session.query(sobrante_por_prestamo).all()
+        for result in results:
+            print(result.prestamo_id, result.sobrante)
+
         # Consulta para sumar el sobrante total de todos los préstamos del usuario
         total_sobrante = (
             db.session.query(func.coalesce(func.sum(sobrante_por_prestamo.c.sobrante), 0).label('total_sobrante'))
             .scalar()
         )
+
+        print(total_sobrante)        
 
         # Devuelve el total de sobrante por usuario
         return total_sobrante
