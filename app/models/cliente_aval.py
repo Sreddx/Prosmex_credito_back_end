@@ -149,7 +149,14 @@ class ClienteAval(db.Model):
         """Calcula el monto restante por pagar del cliente."""
         monto_restante = self.calcular_monto_prestado() - self.calcular_monto_pagado()
         return monto_restante
-    
+    def calcular_monto_prestado_utilidad(self):
+        """Calcula el monto total prestado al cliente."""
+        monto_prestado = sum([prestamo.monto_utilidad for prestamo in self.prestamos_como_titular]) if self.prestamos_como_titular else 0
+        return monto_prestado
+    def calcular_monto_restante_utilidad(self):
+        """Calcula el monto restante por pagar del cliente."""
+        monto_restante = self.calcular_monto_prestado_utilidad() - self.calcular_monto_pagado()
+        return monto_restante
     def calcular_adeudo_cliente(self):
         """Calcula el adeudo total del cliente."""
         adeudo = sum([prestamo.calcular_monto_restante() for prestamo in self.prestamos_como_titular]) if self.prestamos_como_titular else 0
