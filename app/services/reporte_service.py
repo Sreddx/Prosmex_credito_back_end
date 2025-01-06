@@ -185,7 +185,7 @@ class ReporteService:
             morosidad_porcentaje = (morosidad_monto / cobranza_ideal) if cobranza_ideal != 0 else None
             porcentaje_prestamo = (prestamo_real / cobranza_real) if cobranza_real != 0 else None
             sobrante = cobranza_real - prestamo_papel - bono
-            sobrante_logico = calcular_sobrante_grupo(row.grupo_id) - bono
+            sobrante_logico = float(calcular_sobrante_grupo(row.grupo_id) - bono)
             # Agregar datos al reporte
             report_data.append({
                 'grupo_id': row.grupo_id,
