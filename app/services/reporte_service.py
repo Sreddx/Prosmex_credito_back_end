@@ -259,6 +259,7 @@ class ReporteService:
             .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
             .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
             .join(TipoPrestamo, Prestamo.tipo_prestamo_id == TipoPrestamo.tipo_prestamo_id)
+            .filter(Prestamo.completado == False)
             .group_by(Grupo.grupo_id)
             .subquery()
         )
@@ -336,7 +337,7 @@ class ReporteService:
         
         grupo_ids = result_totales.grupo_ids or []
         for grupo_id in grupo_ids:
-            print(f'Grupo ID: {grupo_id}')
+            #print(f'Grupo ID: {grupo_id}')
             bono_data = ReporteService.calcular_bono_por_grupo(grupo_id)
             total_bono += bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
             sobrante_logico = float(Grupo.calcular_sobrante_grupo(grupo_id) - total_bono)
