@@ -163,12 +163,7 @@ class ReporteService:
         # Procesar los resultados de la consulta paginada
         results = paginated_query.all()
         report_data = []
-        def calcular_sobrante_grupo(grupo_id):
-            clientes_grupo = ClienteAval.query.filter_by(grupo_id=grupo_id).all()
-            total_sobrante = 0
-            for cliente in clientes_grupo:
-                total_sobrante -= cliente.calcular_monto_restante_utilidad()
-            return total_sobrante
+        
         for row in results:
             # Obtener los valores de prestamo_real y prestamo_papel desde PrestamoService
             prestamo_real, prestamo_papel = PrestamoService().get_prestamo_real_y_papel_by_grupo(row.grupo_id)
@@ -185,7 +180,7 @@ class ReporteService:
             morosidad_porcentaje = (morosidad_monto / cobranza_ideal) if cobranza_ideal != 0 else None
             porcentaje_prestamo = (prestamo_real / cobranza_real) if cobranza_real != 0 else None
             sobrante = cobranza_real - prestamo_papel - bono
-            sobrante_logico = float(calcular_sobrante_grupo(row.grupo_id) - bono)
+            sobrante_logico = float(Grupo.calcular_sobrante_grupo(row.grupo_id) - bono)
             # Agregar datos al reporte
             report_data.append({
                 'grupo_id': row.grupo_id,
@@ -305,21 +300,6 @@ class ReporteService:
             .subquery()
         )
 
-        """
-        # Subconsulta para morosidad por grupo
-        morosidad_por_grupo = (
-            db.session.query(
-                Grupo.grupo_id.label('grupo_id'),
-                func.sum(func.coalesce(Prestamo.monto_prestamo, 0) - func.coalesce(Pago.monto_pagado, 0)).label('morosidad')
-            )
-            .join(ClienteAval, ClienteAval.grupo_id == Grupo.grupo_id)
-            .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
-            .outerjoin(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
-            .group_by(Grupo.grupo_id)
-            .subquery()
-        )
-        """
-
         # Construcción de la consulta principal para los totales
         query_totales = db.session.query(
             func.sum(cobranza_ideal_por_grupo.c.cobranza_ideal).label('total_cobranza_ideal'),
@@ -348,13 +328,19 @@ class ReporteService:
         # Ejecutar la consulta
         result_totales = query_totales.one()
 
-        # Calcular el bono si es titular
+        # Calcular el bono
         total_bono = 0
-        if user_role_id == 2:  # Titular
-            grupo_ids = result_totales.grupo_ids or []
-            for grupo_id in grupo_ids:
-                bono_data = ReporteService.calcular_bono_por_grupo(grupo_id)
-                total_bono += bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
+        
+        #Calcular sobrante lógico
+        total_sobrante_logico = 0
+        
+        grupo_ids = result_totales.grupo_ids or []
+        for grupo_id in grupo_ids:
+            print(f'Grupo ID: {grupo_id}')
+            bono_data = ReporteService.calcular_bono_por_grupo(grupo_id)
+            total_bono += bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
+            sobrante_logico = float(Grupo.calcular_sobrante_grupo(grupo_id) - total_bono)
+            total_sobrante_logico += sobrante_logico
 
         # Extraer resultados y calcular adicionales
         total_cobranza_ideal = float(result_totales.total_cobranza_ideal or 0)
@@ -382,6 +368,7 @@ class ReporteService:
             'morosidad_porcentaje': morosidad_porcentaje,
             'porcentaje_prestamo': porcentaje_prestamo,
             'sobrante': sobrante,
+            'total_sobrante_logico': total_sobrante_logico,
             'total_bono': total_bono
         }
 
