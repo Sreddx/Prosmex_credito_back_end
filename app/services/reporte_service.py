@@ -264,6 +264,7 @@ class ReporteService:
             .subquery()
         )
 
+        """
         # Subconsulta para total de prestamo_papel y prestamo_real por grupo usando propiedades híbridas
         prestamo_totales_por_grupo = (
             db.session.query(
@@ -276,6 +277,20 @@ class ReporteService:
             .subquery()
         )
 
+        # Imprimir los resultados de prestamo_totales_por_grupo
+        resultados_prestamo_totales = db.session.query(
+            prestamo_totales_por_grupo.c.grupo_id,
+            prestamo_totales_por_grupo.c.total_prestamo_papel,
+            prestamo_totales_por_grupo.c.total_prestamo_real
+        ).all()
+
+        for resultado in resultados_prestamo_totales:
+            grupo_id = resultado.grupo_id
+            total_prestamo_papel = resultado.total_prestamo_papel
+            total_prestamo_real = resultado.total_prestamo_real
+            print(f"Grupo ID: {grupo_id}, Total Prestamo Papel: {total_prestamo_papel}, Total Prestamo Real: {total_prestamo_real}")
+        """
+        
         # Subconsulta para número de créditos por grupo
         numero_de_creditos_por_grupo = (
             db.session.query(
@@ -305,8 +320,8 @@ class ReporteService:
         query_totales = db.session.query(
             func.sum(cobranza_ideal_por_grupo.c.cobranza_ideal).label('total_cobranza_ideal'),
             func.sum(pagos_por_grupo.c.total_pagos).label('total_cobranza_real'),
-            func.sum(prestamo_totales_por_grupo.c.total_prestamo_papel).label('total_prestamo_papel'),
-            func.sum(prestamo_totales_por_grupo.c.total_prestamo_real).label('total_prestamo_real'),
+            #func.sum(prestamo_totales_por_grupo.c.total_prestamo_papel).label('total_prestamo_papel'),
+            #func.sum(prestamo_totales_por_grupo.c.total_prestamo_real).label('total_prestamo_real'),
             func.sum(numero_de_creditos_por_grupo.c.numero_de_creditos).label('total_numero_de_creditos'),
             func.sum(numero_de_prestamos_activos_por_grupo.c.numero_de_prestamos_activos).label('total_numero_de_prestamos_activos'),
             #func.sum(morosidad_por_grupo.c.morosidad).label('total_morosidad'),
@@ -316,7 +331,7 @@ class ReporteService:
         # Unir las subconsultas
         query_totales = query_totales.outerjoin(cobranza_ideal_por_grupo, cobranza_ideal_por_grupo.c.grupo_id == Grupo.grupo_id)
         query_totales = query_totales.outerjoin(pagos_por_grupo, pagos_por_grupo.c.grupo_id == Grupo.grupo_id)
-        query_totales = query_totales.outerjoin(prestamo_totales_por_grupo, prestamo_totales_por_grupo.c.grupo_id == Grupo.grupo_id)
+        #query_totales = query_totales.outerjoin(prestamo_totales_por_grupo, prestamo_totales_por_grupo.c.grupo_id == Grupo.grupo_id)
         query_totales = query_totales.outerjoin(numero_de_creditos_por_grupo, numero_de_creditos_por_grupo.c.grupo_id == Grupo.grupo_id)
         query_totales = query_totales.outerjoin(numero_de_prestamos_activos_por_grupo, numero_de_prestamos_activos_por_grupo.c.grupo_id == Grupo.grupo_id)
         #query_totales = query_totales.outerjoin(morosidad_por_grupo, morosidad_por_grupo.c.grupo_id == Grupo.grupo_id)
@@ -334,6 +349,10 @@ class ReporteService:
         
         #Calcular sobrante lógico
         total_sobrante_logico = 0
+
+        #Calcular prestamo real y papel
+        total_prestamo_real = 0
+        total_prestamo_papel = 0
         
         grupo_ids = result_totales.grupo_ids or []
         for grupo_id in grupo_ids:
@@ -342,12 +361,15 @@ class ReporteService:
             total_bono += bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
             sobrante_logico = float(Grupo.calcular_sobrante_grupo(grupo_id) - total_bono)
             total_sobrante_logico += sobrante_logico
+            prestamo_real_grupo, prestamo_papel_grupo = PrestamoService().get_prestamo_real_y_papel_by_grupo(grupo_id)
+            total_prestamo_papel += prestamo_papel_grupo
+            total_prestamo_real += prestamo_real_grupo
 
         # Extraer resultados y calcular adicionales
         total_cobranza_ideal = float(result_totales.total_cobranza_ideal or 0)
         total_cobranza_real = float(result_totales.total_cobranza_real or 0)
-        total_prestamo_papel = float(result_totales.total_prestamo_papel or 0)
-        total_prestamo_real = float(result_totales.total_prestamo_real or 0)
+        #total_prestamo_papel = float(result_totales.total_prestamo_papel or 0)
+        #total_prestamo_real = float(result_totales.total_prestamo_real or 0)
         total_numero_de_creditos = int(result_totales.total_numero_de_creditos or 0)
         total_prestamos_activos = int(result_totales.total_numero_de_prestamos_activos or 0)
         
