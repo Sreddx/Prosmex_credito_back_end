@@ -26,6 +26,24 @@ class PrestamoService:
     def calcular_utilidad(monto_prestamo, tipo_prestamo):
         return (monto_prestamo * tipo_prestamo.interes) + monto_prestamo
 
+    @staticmethod
+    def aval_valido_para_prestamo(cliente_id, aval_id):
+        print(f"Validando aval {aval_id} para cliente {cliente_id}")
+        prestamo = Prestamo.query.filter_by(aval_id=aval_id).first()
+        if prestamo:
+            # El aval está ocupado
+            if prestamo.cliente_id == cliente_id:
+                # El aval está ocupado con el mismo cliente (es posible para renovación)
+                print(f"El aval está ocupado con el mismo cliente {cliente_id}")
+                return True
+            else:
+                # El aval está ocupado con otro cliente
+                print(f"El aval está ocupado con otro cliente {prestamo.cliente_id}")
+                return False
+        # El aval está libre
+        print(f"El aval está libre")
+        return True
+        
     # Método para crear un nuevo préstamo
     def create_prestamo(self, data, user):
         monto_prestamo = data['monto_prestamo']
@@ -41,18 +59,24 @@ class PrestamoService:
                 # Calcula la utilidad usando el método estático
                 monto_utilidad = self.calcular_utilidad(monto_prestamo, tipo_prestamo)
 
-                # Crea el nuevo préstamo con el monto de utilidad calculado
-                new_prestamo = Prestamo(
-                    cliente_id=data['cliente_id'],
-                    fecha_inicio=fecha_inicio,
-                    monto_prestamo=monto_prestamo,
-                    monto_utilidad=monto_utilidad,
-                    tipo_prestamo_id=data['tipo_prestamo_id'],
-                    aval_id=data['aval_id']
-                )
-                db.session.add(new_prestamo)
-                db.session.commit()
-                return new_prestamo
+                cliente_id = data['cliente_id']
+                aval_id = data['aval_id']
+
+                if self.aval_valido_para_prestamo(cliente_id, aval_id):
+                    # Crea el nuevo préstamo con el monto de utilidad calculado
+                    new_prestamo = Prestamo(
+                        cliente_id=cliente_id,
+                        fecha_inicio=fecha_inicio,
+                        monto_prestamo=monto_prestamo,
+                        monto_utilidad=monto_utilidad,
+                        tipo_prestamo_id=data['tipo_prestamo_id'],
+                        aval_id=aval_id
+                    )
+                    db.session.add(new_prestamo)
+                    db.session.commit()
+                    return new_prestamo
+                else:
+                    raise ValueError("Aval no disponible para este préstamo.")
             except SQLAlchemyError as e:
                 db.session.rollback()
                 app.logger.error(f"Error creando préstamo: {str(e)}")
