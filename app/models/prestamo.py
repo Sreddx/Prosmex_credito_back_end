@@ -69,6 +69,8 @@ class Prestamo(db.Model):
         if prestamo_anterior and prestamo_anterior.semana_activa >= 9:
             self.renovacion = True
             self.completar_prestamo_anterior_restar_monto_faltante_monto_prestamo_actual(prestamo_anterior)
+        else:
+            raise ValueError("El cliente no puede renovar.")
     
     def completar_prestamo_anterior_restar_monto_faltante_monto_prestamo_actual(self, prestamo_anterior):
         """
