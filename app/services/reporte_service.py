@@ -44,11 +44,20 @@ class ReporteService:
         usuarios_supervisor = aliased(Usuario)
         usuarios_titular = aliased(Usuario)
 
+        
         # Configuración de fechas para la semana actual
         mexico_city_tz = pytz.timezone('America/Mexico_City')
         current_date = datetime.now(mexico_city_tz).date()
         start_of_week = current_date - timedelta(days=current_date.weekday())
+        start_of_week_dt = datetime.combine(start_of_week, datetime.min.time())
+        start_of_week_dt = mexico_city_tz.localize(start_of_week_dt)
+        start_of_week = start_of_week_dt
+        
         end_of_week = start_of_week + timedelta(days=6)
+        end_of_week_dt = datetime.combine(end_of_week, datetime.max.time())
+        end_of_week_dt = mexico_city_tz.localize(end_of_week_dt)
+        end_of_week = end_of_week_dt
+        
 
         # Subconsulta para pagos por grupo (cobranza real) - sólo préstamos activos
         pagos_por_grupo = (
@@ -60,8 +69,8 @@ class ReporteService:
             .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
             .join(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
             .filter(
-                Pago.fecha_pago >= start_of_week,
-                Pago.fecha_pago <= end_of_week,
+                Pago.fecha_pago >= start_of_week_dt,
+                Pago.fecha_pago <= end_of_week_dt,
                 Prestamo.completado == False
             )
             .group_by(Grupo.grupo_id)
@@ -231,7 +240,14 @@ class ReporteService:
         mexico_city_tz = pytz.timezone('America/Mexico_City')
         current_date = datetime.now(mexico_city_tz).date()
         start_of_week = current_date - timedelta(days=current_date.weekday())
+        start_of_week_dt = datetime.combine(start_of_week, datetime.min.time())
+        start_of_week_dt = mexico_city_tz.localize(start_of_week_dt)
+        start_of_week = start_of_week_dt
+        
         end_of_week = start_of_week + timedelta(days=6)
+        end_of_week_dt = datetime.combine(end_of_week, datetime.max.time())
+        end_of_week_dt = mexico_city_tz.localize(end_of_week_dt)
+        end_of_week = end_of_week_dt
 
         # Subconsulta para pagos agrupados por grupo (cobranza real)
         pagos_por_grupo = (
@@ -243,8 +259,8 @@ class ReporteService:
             .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
             .join(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
             .filter(
-                Pago.fecha_pago >= start_of_week,
-                Pago.fecha_pago <= end_of_week
+                Pago.fecha_pago >= start_of_week_dt,
+                Pago.fecha_pago <= end_of_week_dt
             )
             .group_by(Grupo.grupo_id)
             .subquery()
@@ -445,9 +461,17 @@ class ReporteService:
     @staticmethod
     def calcular_bono_por_grupo(grupo_id):
         
-        current_date = datetime.now(TIMEZONE).date()
+        mexico_city_tz = pytz.timezone('America/Mexico_City')
+        current_date = datetime.now(mexico_city_tz).date()
         start_of_week = current_date - timedelta(days=current_date.weekday())
+        start_of_week_dt = datetime.combine(start_of_week, datetime.min.time())
+        start_of_week_dt = mexico_city_tz.localize(start_of_week_dt)
+        start_of_week = start_of_week_dt
+        
         end_of_week = start_of_week + timedelta(days=6)
+        end_of_week_dt = datetime.combine(end_of_week, datetime.max.time())
+        end_of_week_dt = mexico_city_tz.localize(end_of_week_dt)
+        end_of_week = end_of_week_dt
 
         # Obtener la cobranza real de la semana sumando los pagos de los préstamos en esa semana
         cobranza_real_semanal = (
@@ -456,8 +480,8 @@ class ReporteService:
             .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
             .filter(
                 ClienteAval.grupo_id == grupo_id,
-                Pago.fecha_pago >= start_of_week,
-                Pago.fecha_pago <= end_of_week
+                Pago.fecha_pago >= start_of_week_dt,
+                Pago.fecha_pago <= end_of_week_dt
             )
         ).scalar() or 0  # Asegurarse de que sea al menos 0
 
@@ -468,8 +492,8 @@ class ReporteService:
             .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
             .filter(
                 ClienteAval.grupo_id == grupo_id,
-                Falta.fecha >= start_of_week,
-                Falta.fecha <= end_of_week
+                Falta.fecha >= start_of_week_dt,
+                Falta.fecha <= end_of_week_dt
             )
         ).scalar() or 0  # Asegurarse de que sea al menos 0
 
