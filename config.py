@@ -6,7 +6,7 @@ from datetime import timedelta
 TIMEZONE = pytz.timezone('America/Mexico_City')
 
 class Config:
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Establece la clave secreta y la clave JWT
@@ -24,10 +24,10 @@ class Config:
     JWT_COOKIE_SECURE = os.environ.get('JWT_COOKIE_SECURE', False)
     FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
     DEBUG = True
-    FLASK_APP = os.environ.get('FLASK_APP', 'app.py')
+    
 
-class localConfig(Config):
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+class LocalConfig(Config):
+    SQLALCHEMY_DATABASE_URI = Config.SQLALCHEMY_DATABASE_URI
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     DEBUG = True
     # Puedes sobrescribir las claves si es necesario en el entorno local
@@ -42,3 +42,11 @@ class QAConfig(Config):
     # Puedes sobrescribir las claves si es necesario en el entorno de QA
     SECRET_KEY = os.environ.get('QA_SECRET_KEY', Config.SECRET_KEY)
     JWT_SECRET_KEY = os.environ.get('QA_JWT_SECRET_KEY', Config.JWT_SECRET_KEY)
+
+class ProductionConfig(Config):
+    SQLALCHEMY_DATABASE_URI = Config.SQLALCHEMY_DATABASE_URI
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # Puedes sobrescribir las claves si es necesario en el entorno de producción
+    SECRET_KEY = os.environ.get('PRODUCTION_SECRET_KEY', Config.SECRET_KEY)
+    JWT_SECRET_KEY = os.environ.get('PRODUCTION_JWT_SECRET_KEY', Config.JWT_SECRET_KEY)

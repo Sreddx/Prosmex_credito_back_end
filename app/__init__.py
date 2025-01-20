@@ -3,7 +3,7 @@ from .database import db, init_engine, init_session, init_db
 from .models import *
 from .extensions import bcrypt, jwt
 from flask_cors import CORS
-from config import localConfig
+from config import LocalConfig, ProductionConfig
 from flask_migrate import Migrate, migrate as run_migration, upgrade as apply_upgrade
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -12,25 +12,11 @@ from app.constants import TIMEZONE
 import os
 
 
-def iniciar_cronjobs(app):
-    """
-    Configura el cronjob que ejecuta la función de verificar_pagos_semanal cada domingo a las 00:00 horas.
-    """
-    scheduler = BackgroundScheduler(timezone=TIMEZONE)
-
-    # Configurar el cronjob para los domingos a las 00:00
-    trigger = CronTrigger(day_of_week='sun', hour=0, minute=0)
-
-    # Agregar el trabajo al scheduler
-    scheduler.add_job(func=verificar_pagos_semanal, trigger=trigger)
-    scheduler.start()
-    print("Cronjob 'verificar_pagos_semanal' registrado para ejecutarse cada domingo a las 00:00.")
-    print("Trabajos programados:", scheduler.get_jobs())
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, instance_relative_config=True)
     
-    app.config.from_object(localConfig)
+    app.config.from_object(ProductionConfig)
     print(app.config)
     # Initialize the database
     engine = init_engine(app.config['SQLALCHEMY_DATABASE_URI'])
@@ -43,25 +29,25 @@ def create_app():
     # Initialize Flask-Migrate
     migrate = Migrate(app, db)
 
-    # Automatically handle migrations
-    with app.app_context():
-        # Run migrations and upgrade if the migration folder exists and is not empty
-        if os.path.exists(os.path.join(app.root_path, 'migrations')):
-            try:
-                # Run migrations to detect changes
-                run_migration(message="Automated migration")
-                print("Migration script generated.")
-            except Exception as e:
-                print(f"No new changes to migrate: {e}")
+    # # Automatically handle migrations
+    # with app.app_context():
+    #     # Run migrations and upgrade if the migration folder exists and is not empty
+    #     if os.path.exists(os.path.join(app.root_path, 'migrations')):
+    #         try:
+    #             # Run migrations to detect changes
+    #             run_migration(message="Automated migration")
+    #             print("Migration script generated.")
+    #         except Exception as e:
+    #             print(f"No new changes to migrate: {e}")
             
-            try:
-                # Apply any pending migrations
-                apply_upgrade()
-                print("Database upgraded successfully.")
-            except Exception as e:
-                print(f"Failed to upgrade the database: {e}")
-        else:
-            print("Migration directory does not exist. Initialize it manually if needed.")
+    #         try:
+    #             # Apply any pending migrations
+    #             apply_upgrade()
+    #             print("Database upgraded successfully.")
+    #         except Exception as e:
+    #             print(f"Failed to upgrade the database: {e}")
+    #     else:
+    #         print("Migration directory does not exist. Initialize it manually if needed.")
 
     # Load initial catalog data
     with app.app_context():
@@ -99,4 +85,20 @@ def create_app():
         if 'session' in locals():
             session.remove()
 
+    def handle_general_exception(e):
+        """ Handle exceptions raised during a request. """
+        app.logger.error(str(e), exc_info=True)
+        response = {
+            "error": str(e),
+            "message": "An error occurred."
+            }
+
+    @app.errorhandler(Exception)
+    def handle_error(e):
+        return handle_general_exception(e)
+    
+    @app.route('/')
+    def status_check():
+        return "Hello from Prosmex API!"
+    
     return app
