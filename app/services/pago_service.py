@@ -227,6 +227,9 @@ class PagoService:
                     'RENOVACION': prestamo.renovacion,
                     'COMPLETADO': prestamo.completado,
                     'MONTO_PAGADO': float(prestamo.calcular_monto_pagado()),
+                    'CLIENTE_ID': titular.cliente_id,
+                    'AVAL_ID': prestamo.aval_id,
+                    'TIPO_PRESTAMO_ID': tipo_prestamo.tipo_prestamo_id,
                 })
 
             total_pages = (total_items + per_page - 1) // per_page
