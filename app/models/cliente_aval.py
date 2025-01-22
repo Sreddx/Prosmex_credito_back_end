@@ -189,9 +189,9 @@ class ClienteAval(db.Model):
     def calcular_prestamo_real(self):
         """Calcula el monto real prestado al cliente."""
         prestamo_papel = self.calcular_prestamo_papel() 
-        print(f'Prestamo papel: {prestamo_papel}')
+        #print(f'Prestamo papel: {prestamo_papel}')
         adeudo = self.calcular_monto_restante_prestamo_actual()
-        print(f'Adeudo: {adeudo}')
+        #print(f'Adeudo: {adeudo}')
         prestamo_real = prestamo_papel - adeudo
         return prestamo_real
     

@@ -219,9 +219,9 @@ class PrestamoService:
             prestamo_real_grupo = 0
             prestamo_papel_grupo = 0
             for cliente in clientes_grupo:
-                print(f'cliente en grupo {grupo_id}: {cliente.nombre} {cliente.apellido_paterno} {cliente.apellido_materno}')
+                #print(f'cliente en grupo {grupo_id}: {cliente.nombre} {cliente.apellido_paterno} {cliente.apellido_materno}')
                 prestamo_real_cliente = cliente.calcular_prestamo_real()
-                print(f'prestamo real cliente: {prestamo_real_cliente}')
+                #print(f'prestamo real cliente: {prestamo_real_cliente}')
                 prestamo_real_grupo += prestamo_real_cliente
                 prestamo_papel_grupo += cliente.calcular_prestamo_papel()
             return float(prestamo_real_grupo), float(prestamo_papel_grupo)

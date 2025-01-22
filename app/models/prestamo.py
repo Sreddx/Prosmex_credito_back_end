@@ -66,11 +66,15 @@ class Prestamo(db.Model):
         """
         prestamo_anterior = Prestamo.query.filter_by(cliente_id=self.cliente_id, status='activo').first()
         
-        if prestamo_anterior and prestamo_anterior.semana_activa >= 9:
-            self.renovacion = True
-            self.completar_prestamo_anterior_restar_monto_faltante_monto_prestamo_actual(prestamo_anterior)
-        else:
-            raise ValueError("El cliente no puede renovar.")
+        #print(f"Prestamo anterior: {prestamo_anterior}")
+        #print(f"Semana activa: {self.semana_activa}")
+        
+        if prestamo_anterior:
+            if prestamo_anterior.semana_activa >= 9:
+                self.renovacion = True
+                self.completar_prestamo_anterior_restar_monto_faltante_monto_prestamo_actual(prestamo_anterior)
+            else:
+                raise ValueError("El cliente no puede renovar.")
     
     def completar_prestamo_anterior_restar_monto_faltante_monto_prestamo_actual(self, prestamo_anterior):
         """
