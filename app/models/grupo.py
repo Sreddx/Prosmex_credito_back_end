@@ -44,5 +44,5 @@ class Grupo(db.Model):
         total_sobrante = 0
         for cliente in clientes_grupo:
             total_sobrante -= cliente.calcular_monto_restante_utilidad()
-        return total_sobrante
+        return float(total_sobrante)
         
