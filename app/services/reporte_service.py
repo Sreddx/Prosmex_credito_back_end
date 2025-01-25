@@ -359,7 +359,7 @@ class ReporteService:
             #print(f'Grupo ID: {grupo_id}')
             bono_data = ReporteService.calcular_bono_por_grupo(grupo_id)
             total_bono += bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
-            sobrante_logico = float(Grupo.calcular_sobrante_grupo(grupo_id) - total_bono)
+            sobrante_logico = float(Grupo.calcular_sobrante_grupo(grupo_id)) - float(total_bono)
             total_sobrante_logico += sobrante_logico
             prestamo_real_grupo, prestamo_papel_grupo = PrestamoService().get_prestamo_real_y_papel_by_grupo(grupo_id)
             total_prestamo_papel += prestamo_papel_grupo
