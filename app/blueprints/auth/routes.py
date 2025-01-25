@@ -30,8 +30,8 @@ def login():
             
             if user and bcrypt.check_password_hash(user.contrasena, password):
                 # Generar tokens
-                access_token = create_access_token(identity=user.id)
-                refresh_token = create_refresh_token(identity=user.id)
+                access_token = create_access_token(identity=str(user.id))
+                refresh_token = create_refresh_token(identity=str(user.id))
 
                 # Crear respuesta con ambos tokens
                 response = create_response({
