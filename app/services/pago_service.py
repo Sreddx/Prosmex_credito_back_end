@@ -148,7 +148,7 @@ class PagoService:
         try:
             clientes_en_grupo = ClienteAval.query.filter_by(grupo_id=grupo_id).all()
             id_titulares = [cliente.cliente_id for cliente in clientes_en_grupo]
-            
+
             prestamos_cliente = Prestamo.query.filter(Prestamo.cliente_id.in_(id_titulares)).all()
             prestamos_list = []
             for prestamo in prestamos_cliente:
@@ -156,19 +156,18 @@ class PagoService:
                 prestamos_list.append({
                     'id': prestamo.prestamo_id,
                     'monto': float(prestamo.monto_prestamo),
-                    'cliente_nombrecompleto': titular.getNombreCompleto()
+                    'cliente_nombrecompleto': titular.getNombreCompleto(),
+                    'fecha_inicio': prestamo.fecha_inicio  # Agregar la fecha de inicio del préstamo
                 })
+
+            prestamos_list = sorted(prestamos_list, key=lambda x: x['fecha_inicio'])  # Ordenar por fecha_inicio
+
             print(prestamos_list)
             return prestamos_list
         except SQLAlchemyError as e:
             app.logger.error(f"Error obteniendo préstamos: {str(e)}")
             raise ValueError("No se pudo obtener la lista de préstamos.")
 
-
-
-
-    
-    
     @staticmethod
     def get_prestamos_by_grupo_tabla(grupo_id, page=1, per_page=10):
         try:
