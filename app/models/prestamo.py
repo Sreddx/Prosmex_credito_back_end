@@ -112,6 +112,7 @@ class Prestamo(db.Model):
             raise ValueError("El monto del préstamo debe ser mayor que 0.")
         return value
 
+    """
     @validates('aval_id')
     def validate_aval_id(self, key, aval_id):
         from app.models.cliente_aval import ClienteAval
@@ -138,6 +139,7 @@ class Prestamo(db.Model):
 
         
         return aval_id
+    """
     
     def serialize(self):
         return {
