@@ -156,11 +156,8 @@ class PagoService:
                 prestamos_list.append({
                     'id': prestamo.prestamo_id,
                     'monto': float(prestamo.monto_prestamo),
-                    'cliente_nombrecompleto': titular.getNombreCompleto(),
-                    'fecha_inicio': prestamo.fecha_inicio  # Agregar la fecha de inicio del préstamo
+                    'cliente_nombrecompleto': titular.getNombreCompleto()
                 })
-
-            prestamos_list = sorted(prestamos_list, key=lambda x: x['fecha_inicio'])  # Ordenar por fecha_inicio
 
             print(prestamos_list)
             return prestamos_list
@@ -227,6 +224,10 @@ class PagoService:
                     'COMPLETADO': prestamo.completado,
                     'MONTO_PAGADO': float(prestamo.calcular_monto_pagado()),
                 })
+
+            #prestamos_list = sorted(prestamos_list, key=lambda x: x['FECHA_PRÉSTAMO'])  # Ordenar por fecha_inicio            
+            for prestamo in prestamos_list:
+                print(prestamo['FECHA_PRÉSTAMO'])
 
             total_pages = (total_items + per_page - 1) // per_page
 

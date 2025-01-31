@@ -62,21 +62,21 @@ class PrestamoService:
                 cliente_id = data['cliente_id']
                 aval_id = data['aval_id']
 
-                if self.aval_valido_para_prestamo(cliente_id, aval_id):
-                    # Crea el nuevo préstamo con el monto de utilidad calculado
-                    new_prestamo = Prestamo(
-                        cliente_id=cliente_id,
-                        fecha_inicio=fecha_inicio,
-                        monto_prestamo=monto_prestamo,
-                        monto_utilidad=monto_utilidad,
-                        tipo_prestamo_id=data['tipo_prestamo_id'],
-                        aval_id=aval_id
-                    )
-                    db.session.add(new_prestamo)
-                    db.session.commit()
-                    return new_prestamo
-                else:
-                    raise ValueError("Aval no disponible para este préstamo.")
+                #if self.aval_valido_para_prestamo(cliente_id, aval_id):
+                # Crea el nuevo préstamo con el monto de utilidad calculado
+                new_prestamo = Prestamo(
+                    cliente_id=cliente_id,
+                    fecha_inicio=fecha_inicio,
+                    monto_prestamo=monto_prestamo,
+                    monto_utilidad=monto_utilidad,
+                    tipo_prestamo_id=data['tipo_prestamo_id'],
+                    aval_id=aval_id
+                )
+                db.session.add(new_prestamo)
+                db.session.commit()
+                return new_prestamo
+                #else:
+                #    raise ValueError("Aval no disponible para este préstamo.")
             except SQLAlchemyError as e:
                 db.session.rollback()
                 app.logger.error(f"Error creando préstamo: {str(e)}")
