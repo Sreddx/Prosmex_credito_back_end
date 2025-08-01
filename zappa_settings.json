@@ -1,15 +1,16 @@
 {
     "dev": {
-        "app_function": "YourProject.run.app",
+        "app_function": "zappa_init.app",
         "aws_region": "us-east-1",
-        "profile_name": "default",
+        "profile_name": "Prosmex",
         "project_name": "prosmex_credito_backend",
         "runtime": "python3.11",
-        "s3_bucket": "zappa-yourproject-bucket",
+        "s3_bucket": "prosmex-credito-backend-bucket",
+        "timeout_seconds": 40,
         "environment_variables": {
-            "FLASK_CONFIG": "development",
-            "SECRET_KEY": "your_secret_key_here",
-            "DATABASE_URL": "postgresql://username:password@host:port/database"
+            "FLASK_CONFIG": "production",
+            "SECRET_KEY": "prosmex_luis_sebas",
+            "DATABASE_URL": "postgresql://postgres:-<wfKP]1Hu!YS:OSqvQ>mAgsa*2J@prosmex-dev-db-instance-1.c9ga6ig0ytab.us-east-1.rds.amazonaws.com/prosmex_db"
         }
     }
 }

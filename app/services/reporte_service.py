@@ -174,22 +174,36 @@ class ReporteService:
         report_data = []
         
         for row in results:
-            # Obtener los valores de prestamo_real y prestamo_papel desde PrestamoService
-            prestamo_real, prestamo_papel = PrestamoService().get_prestamo_real_y_papel_by_grupo(row.grupo_id)
+            try:
+                # Obtener los valores de prestamo_real y prestamo_papel desde PrestamoService
+                prestamo_real, prestamo_papel = PrestamoService().get_prestamo_real_y_papel_by_grupo(row.grupo_id)
 
-            # Obtener el bono para cada grupo (si aplica)
-            bono_data = ReporteService.calcular_bono_por_grupo(row.grupo_id)
-            bono = bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
+                # Obtener el bono para cada grupo (si aplica)
+                bono_data = ReporteService.calcular_bono_por_grupo(row.grupo_id)
+                bono = bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
 
-            # Cálculos adicionales
-            cobranza_ideal = float(row.cobranza_ideal or 0)
-            cobranza_real = float(row.cobranza_real or 0)
+                # Cálculos adicionales
+                cobranza_ideal = float(row.cobranza_ideal or 0)
+                cobranza_real = float(row.cobranza_real or 0)
 
-            morosidad_monto = cobranza_ideal - cobranza_real if cobranza_ideal else 0
-            morosidad_porcentaje = (morosidad_monto / cobranza_ideal) if cobranza_ideal != 0 else None
-            porcentaje_prestamo = (prestamo_real / cobranza_real) if cobranza_real != 0 else None
-            sobrante = cobranza_real - prestamo_papel - bono
-            sobrante_logico = float(Grupo.calcular_sobrante_grupo(row.grupo_id) - bono)
+                morosidad_monto = cobranza_ideal - cobranza_real if cobranza_ideal else 0
+                morosidad_porcentaje = (morosidad_monto / cobranza_ideal) if cobranza_ideal != 0 else None
+                porcentaje_prestamo = (prestamo_real / cobranza_real) if cobranza_real != 0 else None
+                sobrante = cobranza_real - prestamo_papel - bono
+                
+                # Add error handling for sobrante_logico calculation
+                try:
+                    sobrante_grupo = Grupo.calcular_sobrante_grupo(row.grupo_id)
+                    sobrante_logico = float(sobrante_grupo - bono)
+                except Exception as e:
+                    app.logger.warning(f"Error calculating sobrante_logico for grupo {row.grupo_id}: {str(e)}")
+                    sobrante_logico = 0.0
+                    
+            except Exception as e:
+                app.logger.error(f"Error processing grupo {row.grupo_id} in report: {str(e)}")
+                # Skip this group and continue with the next one
+                continue
+                
             # Agregar datos al reporte
             report_data.append({
                 'grupo_id': row.grupo_id,
@@ -374,7 +388,7 @@ class ReporteService:
         for grupo_id in grupo_ids:
             #print(f'Grupo ID: {grupo_id}')
             bono_data = ReporteService.calcular_bono_por_grupo(grupo_id)
-            total_bono += bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
+            total_bono += float(bono_data['bono_aplicado']['monto']) if bono_data['bono_aplicado'] else 0
             sobrante_logico = float(Grupo.calcular_sobrante_grupo(grupo_id) - total_bono)
             total_sobrante_logico += sobrante_logico
             prestamo_real_grupo, prestamo_papel_grupo = PrestamoService().get_prestamo_real_y_papel_by_grupo(grupo_id)

@@ -39,10 +39,11 @@ class Grupo(db.Model):
             morosidad_total += cliente.calcular_monto_restante()
         return morosidad_total
     
+    @staticmethod
     def calcular_sobrante_grupo(grupo_id):
         clientes_grupo = ClienteAval.query.filter_by(grupo_id=grupo_id).all()
         total_sobrante = 0
         for cliente in clientes_grupo:
             total_sobrante -= cliente.calcular_monto_restante_utilidad()
-        return total_sobrante
+        return float(total_sobrante)
         

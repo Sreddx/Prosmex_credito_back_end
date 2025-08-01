@@ -148,7 +148,7 @@ class PagoService:
         try:
             clientes_en_grupo = ClienteAval.query.filter_by(grupo_id=grupo_id).all()
             id_titulares = [cliente.cliente_id for cliente in clientes_en_grupo]
-            
+
             prestamos_cliente = Prestamo.query.filter(Prestamo.cliente_id.in_(id_titulares)).all()
             prestamos_list = []
             for prestamo in prestamos_cliente:
@@ -158,17 +158,13 @@ class PagoService:
                     'monto': float(prestamo.monto_prestamo),
                     'cliente_nombrecompleto': titular.getNombreCompleto()
                 })
+
             print(prestamos_list)
             return prestamos_list
         except SQLAlchemyError as e:
             app.logger.error(f"Error obteniendo préstamos: {str(e)}")
             raise ValueError("No se pudo obtener la lista de préstamos.")
 
-
-
-
-    
-    
     @staticmethod
     def get_prestamos_by_grupo_tabla(grupo_id, page=1, per_page=10):
         try:
@@ -176,14 +172,25 @@ class PagoService:
             if not grupo:
                 raise ValueError(f"No se encontró el grupo con ID: {grupo_id}")
 
+            # Get all clients (titulares) in the group
             titulares_en_grupo = ClienteAval.query.filter_by(grupo_id=grupo_id).all()
             id_titulares = [titular.cliente_id for titular in titulares_en_grupo]
 
-            prestamos_cliente_query = Prestamo.query.options(
-                joinedload(Prestamo.titular),
-                joinedload(Prestamo.tipo_prestamo),
-                joinedload(Prestamo.pagos)
-            ).filter(Prestamo.cliente_id.in_(id_titulares), Prestamo.completado == False)
+            # Build the query to fetch prestamos for the group's clients,
+            # including any necessary joined relationships.
+            # Add an order_by clause to sort by fecha_inicio.
+            prestamos_cliente_query = (
+                Prestamo.query.options(
+                    joinedload(Prestamo.titular),
+                    joinedload(Prestamo.tipo_prestamo),
+                    joinedload(Prestamo.pagos)
+                )
+                .filter(
+                    Prestamo.cliente_id.in_(id_titulares),
+                    Prestamo.completado == False
+                )
+                .order_by(Prestamo.fecha_inicio.asc())
+            )
 
             total_items = prestamos_cliente_query.count()
             prestamos_cliente = prestamos_cliente_query.limit(per_page).offset((page - 1) * per_page).all()
@@ -193,30 +200,25 @@ class PagoService:
                 titular = prestamo.titular
                 tipo_prestamo = prestamo.tipo_prestamo
                 
-                # Datos nuevos
+                # Calculate completed weeks (payments made)
                 semanas_completadas = prestamo.semana_activa
                 
-                # Calcular cobranza ideal
+                # Calculate the ideal weekly collection
                 cobranza_ideal_prestamo = prestamo.calcular_cobranza_ideal()
                 pagos_validos = len([pago for pago in prestamo.pagos if pago.monto_pagado >= cobranza_ideal_prestamo])
                 
-                
-                semanas_que_debe = tipo_prestamo.numero_semanas  # Inicialmente igual al número de semanas
-                faltas = 0
-
-                # Obtener las faltas registradas para el préstamo
+                # Determine weeks due: initial number of weeks plus any recorded faltas minus weeks paid
+                semanas_que_debe = tipo_prestamo.numero_semanas
                 faltas_registradas = FaltaService.get_faltas_by_prestamo_id(prestamo.prestamo_id)
-                faltas += len(faltas_registradas)
+                faltas = len(faltas_registradas)
+                semanas_que_debe = semanas_que_debe - semanas_completadas + faltas
 
-                # Calcular semanas que debe sumando las faltas
-                semanas_que_debe = semanas_que_debe - semanas_completadas + faltas  # Número de semanas originales más faltas, menos pagos completados
-                
                 prestamos_list.append({
                     'GRUPO': grupo.nombre_grupo,
                     'CLIENTE': titular.getNombreCompleto(),
                     'AVAL': prestamo.aval.getNombreCompleto(),
                     'MONTO_PRÉSTAMO': float(prestamo.monto_prestamo),
-                    'MONTO_PRÉSTAMO_REAL' : float(prestamo.monto_prestamo_real) if prestamo.monto_prestamo_real else float(prestamo.monto_prestamo),
+                    'MONTO_PRÉSTAMO_REAL': float(prestamo.monto_prestamo_real) if prestamo.monto_prestamo_real else float(prestamo.monto_prestamo),
                     'FECHA_PRÉSTAMO': prestamo.fecha_inicio.strftime('%Y-%m-%d'),
                     'COBRANZA_IDEAL_SEMANAL': cobranza_ideal_prestamo,
                     'TIPO_PRESTAMO': prestamo.tipo_prestamo.nombre,
@@ -244,6 +246,7 @@ class PagoService:
         except SQLAlchemyError as e:
             app.logger.error(f"Error obteniendo préstamos: {str(e)}")
             raise ValueError("No se pudo obtener la lista de préstamos.")
+
 
 
 

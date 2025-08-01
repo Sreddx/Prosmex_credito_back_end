@@ -66,11 +66,13 @@ class Prestamo(db.Model):
         """
         prestamo_anterior = Prestamo.query.filter_by(cliente_id=self.cliente_id, status='activo').first()
         
+
         if prestamo_anterior and prestamo_anterior.semana_activa >= 9 and self.prestamo_anterior_al_corriente(prestamo_anterior):
             self.renovacion = True
             self.completar_prestamo_anterior_restar_monto_faltante_monto_prestamo_actual(prestamo_anterior)
         else:
             raise ValueError("El cliente no puede renovar.")
+
     
     def prestamo_anterior_al_corriente(self, prestamo_anterior):
         def obtener_ultimo_pago(prestamo):
@@ -126,6 +128,7 @@ class Prestamo(db.Model):
             raise ValueError("El monto del préstamo debe ser mayor que 0.")
         return value
 
+    """
     @validates('aval_id')
     def validate_aval_id(self, key, aval_id):
         from app.models.cliente_aval import ClienteAval
@@ -152,6 +155,7 @@ class Prestamo(db.Model):
 
         
         return aval_id
+    """
     
     def serialize(self):
         return {
