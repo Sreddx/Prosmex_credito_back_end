@@ -79,9 +79,10 @@ def list_avales():
     def func():
         page = request.args.get('page', default=1, type=int)
         per_page = request.args.get('per_page', default=10, type=int)
+        grupo_id = request.args.get('grupo_id', type=int)
 
         cliente_service = ClienteAvalService()
-        avales, total_pages = cliente_service.list_avales(page, per_page)
+        avales, total_pages = cliente_service.list_avales(page, per_page, grupo_id)
         
         return create_response({
             'avales': avales,
@@ -98,9 +99,10 @@ def list_clientes_registro():
     def func():
         page = request.args.get('page', default=1, type=int)
         per_page = request.args.get('per_page', default=10, type=int)
+        grupo_id = request.args.get('grupo_id', type=int)
 
         cliente_service = ClienteAvalService()
-        clientes, total_pages = cliente_service.list_clientes_registro(page, per_page)
+        clientes, total_pages = cliente_service.list_clientes_registro(page, per_page, grupo_id)
         
         return create_response({
             'clientes': clientes,
@@ -176,5 +178,31 @@ def calcular_prestamo_real(cliente_id):
         cliente = cliente_service.get_cliente()
         prestamo_real = cliente.calcular_prestamo_real()
         return create_response({'prestamo_real': prestamo_real}, 200)
+
+    return handle_exceptions(func)
+
+# Aval validation endpoints
+@cliente_blueprint.route('/validate-aval', methods=['POST'])
+def validate_aval():
+    def func():
+        data = request.get_json()
+        if not data or 'cliente_id' not in data or 'aval_id' not in data:
+            return make_error_response('Se requieren cliente_id y aval_id', 400)
+        
+        cliente_service = ClienteAvalService()
+        validation_result = cliente_service.validate_aval_for_prestamo(
+            data['cliente_id'], 
+            data['aval_id']
+        )
+        return create_response(validation_result, 200)
+
+    return handle_exceptions(func)
+
+@cliente_blueprint.route('/aval-suggestions/<int:cliente_id>', methods=['GET'])
+def get_aval_suggestions(cliente_id):
+    def func():
+        cliente_service = ClienteAvalService()
+        suggestions = cliente_service.get_aval_suggestions(cliente_id)
+        return create_response({'suggestions': suggestions}, 200)
 
     return handle_exceptions(func)
