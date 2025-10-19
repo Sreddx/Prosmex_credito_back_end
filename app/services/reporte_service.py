@@ -44,11 +44,20 @@ class ReporteService:
         usuarios_supervisor = aliased(Usuario)
         usuarios_titular = aliased(Usuario)
 
+        
         # Configuración de fechas para la semana actual
         mexico_city_tz = pytz.timezone('America/Mexico_City')
         current_date = datetime.now(mexico_city_tz).date()
         start_of_week = current_date - timedelta(days=current_date.weekday())
+        start_of_week_dt = datetime.combine(start_of_week, datetime.min.time())
+        start_of_week_dt = mexico_city_tz.localize(start_of_week_dt)
+        start_of_week = start_of_week_dt
+        
         end_of_week = start_of_week + timedelta(days=6)
+        end_of_week_dt = datetime.combine(end_of_week, datetime.max.time())
+        end_of_week_dt = mexico_city_tz.localize(end_of_week_dt)
+        end_of_week = end_of_week_dt
+        
 
         # Subconsulta para pagos por grupo (cobranza real) - sólo préstamos activos
         pagos_por_grupo = (
@@ -60,8 +69,8 @@ class ReporteService:
             .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
             .join(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
             .filter(
-                Pago.fecha_pago >= start_of_week,
-                Pago.fecha_pago <= end_of_week,
+                Pago.fecha_pago >= start_of_week_dt,
+                Pago.fecha_pago <= end_of_week_dt,
                 Prestamo.completado == False
             )
             .group_by(Grupo.grupo_id)
@@ -165,22 +174,36 @@ class ReporteService:
         report_data = []
         
         for row in results:
-            # Obtener los valores de prestamo_real y prestamo_papel desde PrestamoService
-            prestamo_real, prestamo_papel = PrestamoService().get_prestamo_real_y_papel_by_grupo(row.grupo_id)
+            try:
+                # Obtener los valores de prestamo_real y prestamo_papel desde PrestamoService
+                prestamo_real, prestamo_papel = PrestamoService().get_prestamo_real_y_papel_by_grupo(row.grupo_id)
 
-            # Obtener el bono para cada grupo (si aplica)
-            bono_data = ReporteService.calcular_bono_por_grupo(row.grupo_id)
-            bono = bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
+                # Obtener el bono para cada grupo (si aplica)
+                bono_data = ReporteService.calcular_bono_por_grupo(row.grupo_id)
+                bono = bono_data['bono_aplicado']['monto'] if bono_data['bono_aplicado'] else 0
 
-            # Cálculos adicionales
-            cobranza_ideal = float(row.cobranza_ideal or 0)
-            cobranza_real = float(row.cobranza_real or 0)
+                # Cálculos adicionales
+                cobranza_ideal = float(row.cobranza_ideal or 0)
+                cobranza_real = float(row.cobranza_real or 0)
 
-            morosidad_monto = cobranza_ideal - cobranza_real if cobranza_ideal else 0
-            morosidad_porcentaje = (morosidad_monto / cobranza_ideal) if cobranza_ideal != 0 else None
-            porcentaje_prestamo = (prestamo_real / cobranza_real) if cobranza_real != 0 else None
-            sobrante = cobranza_real - prestamo_papel - bono
-            sobrante_logico = float(Grupo.calcular_sobrante_grupo(row.grupo_id) - bono)
+                morosidad_monto = cobranza_ideal - cobranza_real if cobranza_ideal else 0
+                morosidad_porcentaje = (morosidad_monto / cobranza_ideal) if cobranza_ideal != 0 else None
+                porcentaje_prestamo = (prestamo_real / cobranza_real) if cobranza_real != 0 else None
+                sobrante = cobranza_real - prestamo_papel - bono
+                
+                # Add error handling for sobrante_logico calculation
+                try:
+                    sobrante_grupo = Grupo.calcular_sobrante_grupo(row.grupo_id)
+                    sobrante_logico = float(sobrante_grupo - bono)
+                except Exception as e:
+                    app.logger.warning(f"Error calculating sobrante_logico for grupo {row.grupo_id}: {str(e)}")
+                    sobrante_logico = 0.0
+                    
+            except Exception as e:
+                app.logger.error(f"Error processing grupo {row.grupo_id} in report: {str(e)}")
+                # Skip this group and continue with the next one
+                continue
+                
             # Agregar datos al reporte
             report_data.append({
                 'grupo_id': row.grupo_id,
@@ -231,7 +254,14 @@ class ReporteService:
         mexico_city_tz = pytz.timezone('America/Mexico_City')
         current_date = datetime.now(mexico_city_tz).date()
         start_of_week = current_date - timedelta(days=current_date.weekday())
+        start_of_week_dt = datetime.combine(start_of_week, datetime.min.time())
+        start_of_week_dt = mexico_city_tz.localize(start_of_week_dt)
+        start_of_week = start_of_week_dt
+        
         end_of_week = start_of_week + timedelta(days=6)
+        end_of_week_dt = datetime.combine(end_of_week, datetime.max.time())
+        end_of_week_dt = mexico_city_tz.localize(end_of_week_dt)
+        end_of_week = end_of_week_dt
 
         # Subconsulta para pagos agrupados por grupo (cobranza real)
         pagos_por_grupo = (
@@ -243,8 +273,8 @@ class ReporteService:
             .join(Prestamo, Prestamo.cliente_id == ClienteAval.cliente_id)
             .join(Pago, Pago.prestamo_id == Prestamo.prestamo_id)
             .filter(
-                Pago.fecha_pago >= start_of_week,
-                Pago.fecha_pago <= end_of_week
+                Pago.fecha_pago >= start_of_week_dt,
+                Pago.fecha_pago <= end_of_week_dt
             )
             .group_by(Grupo.grupo_id)
             .subquery()
@@ -427,16 +457,12 @@ class ReporteService:
 
         # Imprimir los resultados de la consulta sobrante_por_prestamo
         results = db.session.query(sobrante_por_prestamo).all()
-        for result in results:
-            print(result.prestamo_id, result.sobrante)
 
         # Consulta para sumar el sobrante total de todos los préstamos del usuario
         total_sobrante = (
             db.session.query(func.coalesce(func.sum(sobrante_por_prestamo.c.sobrante), 0).label('total_sobrante'))
             .scalar()
-        )
-
-        print(total_sobrante)        
+        )     
 
         # Devuelve el total de sobrante por usuario
         return total_sobrante
@@ -445,9 +471,17 @@ class ReporteService:
     @staticmethod
     def calcular_bono_por_grupo(grupo_id):
         
-        current_date = datetime.now(TIMEZONE).date()
+        mexico_city_tz = pytz.timezone('America/Mexico_City')
+        current_date = datetime.now(mexico_city_tz).date()
         start_of_week = current_date - timedelta(days=current_date.weekday())
+        start_of_week_dt = datetime.combine(start_of_week, datetime.min.time())
+        start_of_week_dt = mexico_city_tz.localize(start_of_week_dt)
+        start_of_week = start_of_week_dt
+        
         end_of_week = start_of_week + timedelta(days=6)
+        end_of_week_dt = datetime.combine(end_of_week, datetime.max.time())
+        end_of_week_dt = mexico_city_tz.localize(end_of_week_dt)
+        end_of_week = end_of_week_dt
 
         # Obtener la cobranza real de la semana sumando los pagos de los préstamos en esa semana
         cobranza_real_semanal = (
@@ -456,8 +490,8 @@ class ReporteService:
             .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
             .filter(
                 ClienteAval.grupo_id == grupo_id,
-                Pago.fecha_pago >= start_of_week,
-                Pago.fecha_pago <= end_of_week
+                Pago.fecha_pago >= start_of_week_dt,
+                Pago.fecha_pago <= end_of_week_dt
             )
         ).scalar() or 0  # Asegurarse de que sea al menos 0
 
@@ -468,8 +502,8 @@ class ReporteService:
             .join(ClienteAval, Prestamo.cliente_id == ClienteAval.cliente_id)
             .filter(
                 ClienteAval.grupo_id == grupo_id,
-                Falta.fecha >= start_of_week,
-                Falta.fecha <= end_of_week
+                Falta.fecha >= start_of_week_dt,
+                Falta.fecha <= end_of_week_dt
             )
         ).scalar() or 0  # Asegurarse de que sea al menos 0
 

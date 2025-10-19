@@ -88,6 +88,24 @@ class Prestamo(db.Model):
             else:
                 raise ValueError("El cliente no puede renovar.")
     
+    def prestamo_anterior_al_corriente(self, prestamo_anterior):
+        def obtener_ultimo_pago(prestamo):
+            if not prestamo or not prestamo.pagos:
+                return None  # No hay préstamo o no tiene pagos
+        
+            # Ordenamos en orden descendente por fecha_pago
+            pagos_ordenados = sorted(prestamo.pagos, key=lambda p: p.fecha_pago, reverse=True)
+            print(pagos_ordenados[0].serialize())
+            return pagos_ordenados[0]  # El más reciente
+        current_date = datetime.now(TIMEZONE).date()
+        start_of_week = current_date - timedelta(days=current_date.weekday())
+        from app.models import Pago
+        pago_semana = obtener_ultimo_pago(prestamo_anterior)
+        if pago_semana:
+            if pago_semana.monto_pagado >= prestamo_anterior.calcular_cobranza_ideal() and pago_semana.fecha_pago.date() >= start_of_week:
+                return True
+        return False
+
     def completar_prestamo_anterior_restar_monto_faltante_monto_prestamo_actual(self, prestamo_anterior):
         """
         Completa el préstamo anterior y resta el monto faltante al monto del préstamo actual.
