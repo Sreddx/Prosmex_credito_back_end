@@ -14,12 +14,39 @@ def create_prestamo():
         data = request.get_json()
         prestamo_service = PrestamoService()
         user = UsuarioService.get_user_from_jwt()
+
         if not user:
             raise ValueError("Usuario no encontrado")
         if not data:
             raise ValueError("No se proporcionaron datos para prestamo")
-        new_prestamo = prestamo_service.create_prestamo(data, user)
-        return create_response({'message': 'Prestamo created successfully', 'prestamo': new_prestamo.prestamo_id}, 201)
+
+        # Detectar si es un batch (lista) o un solo préstamo (dict)
+        if isinstance(data, list):
+            # Batch creation
+            if len(data) == 0:
+                raise ValueError("La lista de préstamos está vacía")
+
+            result = prestamo_service.create_prestamos_batch(data, user)
+
+            if result['success']:
+                return create_response({
+                    'message': result['message'],
+                    'created': result['created'],
+                    'total': len(result['created'])
+                }, 201)
+            else:
+                return create_response({
+                    'message': result['message'],
+                    'errors': result['errors'],
+                    'failed': len(result['errors'])
+                }, 400)
+        else:
+            # Single creation (existing behavior)
+            new_prestamo = prestamo_service.create_prestamo(data, user)
+            return create_response({
+                'message': 'Prestamo created successfully',
+                'prestamo': new_prestamo.prestamo_id
+            }, 201)
 
     return handle_exceptions(func)
 
