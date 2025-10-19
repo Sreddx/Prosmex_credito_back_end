@@ -11,7 +11,37 @@ from app.services.falta_service import FaltaService  # Importar el servicio de f
 class PrestamoService:
     def __init__(self, prestamo_id=None):
         self.prestamo_id = prestamo_id
-   
+
+    @staticmethod
+    def __parse_fecha(fecha_string):
+        """
+        Parse date string in multiple formats and return datetime object.
+        Supports: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY
+        """
+        if isinstance(fecha_string, datetime):
+            return fecha_string
+
+        if not isinstance(fecha_string, str):
+            return datetime.now(TIMEZONE)
+
+        # Try different date formats
+        date_formats = [
+            '%Y-%m-%d',      # ISO format: 2025-01-18
+            '%d/%m/%Y',      # DD/MM/YYYY: 19/06/2025
+            '%d-%m-%Y',      # DD-MM-YYYY: 19-06-2025
+        ]
+
+        for fmt in date_formats:
+            try:
+                # Parse the date and localize to timezone
+                parsed_date = datetime.strptime(fecha_string, fmt)
+                return TIMEZONE.localize(parsed_date) if parsed_date.tzinfo is None else parsed_date
+            except ValueError:
+                continue
+
+        # If no format worked, raise error
+        raise ValueError(f"Formato de fecha no válido: {fecha_string}. Use YYYY-MM-DD, DD/MM/YYYY o DD-MM-YYYY")
+
     @staticmethod
     def __check_override_monto_prestamo(monto_prestamo, user):
         user_role = usuario_service.UsuarioService.get_user_rol_by_user_id(user.id)
@@ -49,7 +79,12 @@ class PrestamoService:
         monto_prestamo = data['monto_prestamo']
         if self.__check_override_monto_prestamo(monto_prestamo, user):
             try:
-                fecha_inicio = data.get('fecha_inicio', datetime.now(TIMEZONE))
+                # Parse fecha_inicio with support for multiple formats
+                fecha_inicio_raw = data.get('fecha_inicio')
+                if fecha_inicio_raw:
+                    fecha_inicio = self.__parse_fecha(fecha_inicio_raw)
+                else:
+                    fecha_inicio = datetime.now(TIMEZONE)
 
                 # Obtén el tipo de préstamo para calcular el porcentaje semanal y el número de semanas
                 tipo_prestamo = TipoPrestamo.query.get(data['tipo_prestamo_id'])
@@ -83,6 +118,112 @@ class PrestamoService:
                 raise ValueError("No se pudo crear el préstamo.")
         else:
             raise ValueError("No tienes permisos para agregar un préstamo mayor a 5000.")
+
+    # Método para crear múltiples préstamos en batch
+    def create_prestamos_batch(self, prestamos_data, user):
+        """
+        Crea múltiples préstamos en una sola transacción.
+
+        Args:
+            prestamos_data: Lista de diccionarios con datos de préstamos
+            user: Usuario que realiza la operación
+
+        Returns:
+            dict: Resultado con préstamos creados exitosamente y errores
+        """
+        created_prestamos = []
+        errors = []
+
+        try:
+            for index, data in enumerate(prestamos_data):
+                try:
+                    # Validar campos requeridos
+                    required_fields = ['cliente_id', 'monto_prestamo', 'tipo_prestamo_id', 'aval_id']
+                    missing_fields = [field for field in required_fields if field not in data]
+                    if missing_fields:
+                        raise ValueError(f"Campos requeridos faltantes: {', '.join(missing_fields)}")
+
+                    monto_prestamo = data['monto_prestamo']
+
+                    # Validar permisos de monto
+                    if not self.__check_override_monto_prestamo(monto_prestamo, user):
+                        raise ValueError("No tienes permisos para agregar un préstamo mayor a 5000.")
+
+                    # Parse fecha_inicio with support for multiple formats
+                    fecha_inicio_raw = data.get('fecha_inicio')
+                    if fecha_inicio_raw:
+                        fecha_inicio = self.__parse_fecha(fecha_inicio_raw)
+                    else:
+                        fecha_inicio = datetime.now(TIMEZONE)
+
+                    # Obtener tipo de préstamo
+                    tipo_prestamo = TipoPrestamo.query.get(data['tipo_prestamo_id'])
+                    if not tipo_prestamo:
+                        raise ValueError("Tipo de préstamo no encontrado.")
+
+                    # Calcular utilidad
+                    monto_utilidad = self.calcular_utilidad(monto_prestamo, tipo_prestamo)
+
+                    cliente_id = data['cliente_id']
+                    aval_id = data['aval_id']
+
+                    # Crear préstamo
+                    new_prestamo = Prestamo(
+                        cliente_id=cliente_id,
+                        fecha_inicio=fecha_inicio,
+                        monto_prestamo=monto_prestamo,
+                        monto_utilidad=monto_utilidad,
+                        tipo_prestamo_id=data['tipo_prestamo_id'],
+                        aval_id=aval_id
+                    )
+                    db.session.add(new_prestamo)
+                    db.session.flush()  # Obtener el ID sin hacer commit
+
+                    created_prestamos.append({
+                        'index': index,
+                        'prestamo_id': new_prestamo.prestamo_id,
+                        'cliente_id': cliente_id,
+                        'monto_prestamo': float(monto_prestamo)
+                    })
+
+                except Exception as e:
+                    errors.append({
+                        'index': index,
+                        'data': data,
+                        'error': str(e)
+                    })
+                    app.logger.error(f"Error creando préstamo en índice {index}: {str(e)}")
+
+            # Si hay errores, hacer rollback de toda la transacción
+            if errors:
+                db.session.rollback()
+                app.logger.warning(f"Batch creation rolled back. Errors: {len(errors)}/{len(prestamos_data)}")
+                return {
+                    'success': False,
+                    'created': [],
+                    'errors': errors,
+                    'message': f'Batch creation failed. {len(errors)} error(s) out of {len(prestamos_data)} prestamos.'
+                }
+
+            # Si todo está bien, hacer commit
+            db.session.commit()
+            app.logger.info(f"Successfully created {len(created_prestamos)} prestamos in batch")
+
+            return {
+                'success': True,
+                'created': created_prestamos,
+                'errors': [],
+                'message': f'Successfully created {len(created_prestamos)} prestamos.'
+            }
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            app.logger.error(f"Database error in batch creation: {str(e)}")
+            raise ValueError("Error en la base de datos durante la creación batch de préstamos.")
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Unexpected error in batch creation: {str(e)}")
+            raise ValueError("Error inesperado durante la creación batch de préstamos.")
                 
 
     def get_prestamo(self):

@@ -64,11 +64,23 @@ class Prestamo(db.Model):
         """
         Verifica si el préstamo es una renovación.
         """
-        prestamo_anterior = Prestamo.query.filter_by(cliente_id=self.cliente_id, status='activo').first()
-        
-        #print(f"Prestamo anterior: {prestamo_anterior}")
-        #print(f"Semana activa: {self.semana_activa}")
-        
+        # Build query to find previous active loans for this client
+        query = Prestamo.query.filter_by(cliente_id=self.cliente_id, status='activo')
+
+        # Exclude the current prestamo if it already has an ID (to avoid matching itself)
+        if self.prestamo_id is not None:
+            query = query.filter(Prestamo.prestamo_id != self.prestamo_id)
+
+        prestamo_anterior = query.first()
+
+        print(f"DEBUG - Cliente ID: {self.cliente_id}")
+        print(f"DEBUG - Prestamo ID actual: {self.prestamo_id}")
+        print(f"DEBUG - Prestamo anterior encontrado: {prestamo_anterior}")
+        if prestamo_anterior:
+            print(f"DEBUG - Prestamo anterior ID: {prestamo_anterior.prestamo_id}")
+            print(f"DEBUG - Prestamo anterior cliente_id: {prestamo_anterior.cliente_id}")
+            print(f"DEBUG - Semana activa del anterior: {prestamo_anterior.semana_activa}")
+
         if prestamo_anterior:
             if prestamo_anterior.semana_activa >= 9:
                 self.renovacion = True
@@ -91,6 +103,11 @@ class Prestamo(db.Model):
         db.session.commit()
     
     def actualizar_semana_activa(self, cubre_cobranza):
+        """
+        Actualiza la semana activa del préstamo.
+        Avanza SOLO UNA SEMANA por pago registrado, incluso si hay adelanto acumulado.
+        El usuario debe registrar pagos (incluso de $0) para avanzar cada semana.
+        """
         if cubre_cobranza:
             self.semana_activa += 1
             db.session.commit()
@@ -155,7 +172,8 @@ class Prestamo(db.Model):
             'renovacion': self.renovacion,
             'semana_activa': self.semana_activa,
             'monto_pagado': self.calcular_monto_pagado(),
-            'monto_restante': self.calcular_monto_restante()
+            'monto_restante': self.calcular_monto_restante(),
+            'adelanto_acumulado': float(self.calcular_adelanto_acumulado())
         }
         
     # Funciones de operacion
@@ -193,14 +211,31 @@ class Prestamo(db.Model):
     
     
     def verificar_pago_cubre_cobranza_ideal(self, pago):
+        """
+        Verifica si el pago (junto con el adelanto acumulado) cubre la cobranza ideal.
+        Permite pagos de $0 si el adelanto acumulado cubre la semana completa.
+        """
         cobranza_ideal = self.calcular_cobranza_ideal()
+        adelanto_acumulado = self.calcular_adelanto_acumulado()
+        monto_pago = float(pago.monto_pagado)
+
         try:
-            if pago.monto_pagado < cobranza_ideal:
-                falta = Falta(fecha=datetime.now(TIMEZONE).date(), prestamo_id=self.prestamo_id, monto_abonado=pago.monto_pagado)
+            # Calcular monto total disponible: pago actual + adelanto acumulado
+            monto_total_disponible = monto_pago + adelanto_acumulado
+
+            # Si el monto total disponible cubre la cobranza ideal, no hay falta
+            if monto_total_disponible >= float(cobranza_ideal):
+                return True
+            else:
+                # No cubre la cobranza ideal, registrar falta
+                falta = Falta(
+                    fecha=datetime.now(TIMEZONE).date(),
+                    prestamo_id=self.prestamo_id,
+                    monto_abonado=monto_pago
+                )
                 db.session.add(falta)
                 db.session.commit()
                 return False
-            return True
         except Exception as e:
             db.session.rollback()
             raise ValueError(f"No se pudo verificar el pago: {str(e)}")
@@ -214,4 +249,17 @@ class Prestamo(db.Model):
         """Calcula el monto restante por pagar del cliente."""
         monto_restante = self.monto_utilidad- self.calcular_monto_pagado()
         return monto_restante
+
+    def calcular_adelanto_acumulado(self):
+        """
+        Calcula el monto de adelanto acumulado basándose en los pagos ya realizados.
+        Adelanto = Total pagado - (semana_activa * cobranza_ideal)
+        Si el resultado es positivo, hay adelanto acumulado.
+        """
+        cobranza_ideal = self.calcular_cobranza_ideal()
+        monto_pagado_total = float(self.calcular_monto_pagado())
+        monto_esperado_hasta_ahora = float(self.semana_activa) * float(cobranza_ideal)
+
+        adelanto = monto_pagado_total - monto_esperado_hasta_ahora
+        return max(0, adelanto)  # Si es negativo, no hay adelanto
 
