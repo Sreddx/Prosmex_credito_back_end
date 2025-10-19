@@ -19,7 +19,7 @@ class PagoService:
             # missing_fields = [field for field in required_fields if field not in data]
             # if missing_fields:
             #     raise ValueError(f"Faltan campos requeridos: {', '.join(missing_fields)}")
-            
+
             #print(f'Length data: {len(data)}')
 
             if len(data) > 1:
@@ -229,9 +229,7 @@ class PagoService:
                     'RENOVACION': prestamo.renovacion,
                     'COMPLETADO': prestamo.completado,
                     'MONTO_PAGADO': float(prestamo.calcular_monto_pagado()),
-                    'CLIENTE_ID': titular.cliente_id,
-                    'AVAL_ID': prestamo.aval_id,
-                    'TIPO_PRESTAMO_ID': tipo_prestamo.tipo_prestamo_id,
+                    'ADELANTO_ACUMULADO': float(prestamo.calcular_adelanto_acumulado())
                 })
 
             total_pages = (total_items + per_page - 1) // per_page
